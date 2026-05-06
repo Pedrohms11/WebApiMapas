@@ -32,7 +32,19 @@ namespace WebApiMapas.Service
         /// <returns>A localização persistida com os dados atualizados.</returns>
         public async Task<Localizacao> Criar(Localizacao localizacao)
         {
-           
+
+            // Validação de Latitude: deve estar entre -90 e 90
+            if (localizacao.Latitude < -90 || localizacao.Latitude > 90)
+            {
+                throw new ArgumentException("A latitude deve estar entre -90 e 90 graus.");
+            }
+
+            // Validação de Longitude: deve estar entre -180 e 180
+            if (localizacao.Longitude < -180 || localizacao.Longitude > 180)
+            {
+                throw new ArgumentException("A longitude deve estar entre -180 e 180 graus.");
+            }
+
             await _repo.Add(localizacao);
             return localizacao;
         }
