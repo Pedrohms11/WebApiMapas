@@ -1,4 +1,6 @@
-﻿namespace WebApiMapas.Service
+﻿using WebApiMapas.Repositories.Interfaces;
+
+namespace WebApiMapas.Service
 {
     /// <summary>
     /// Serviço responsável por gerenciar operações relacionadas a localizações georreferenciadas.
