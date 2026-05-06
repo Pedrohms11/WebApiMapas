@@ -27,6 +27,8 @@ namespace WebApiMapas.Controllers
         /// </summary>
         private readonly LocalizacaoService _service;
 
+        private readonly FirestoreDb _firestoreDb;
+
         /// <summary>
         /// Construtor da classe MapasController.
         /// </summary>
@@ -37,7 +39,7 @@ namespace WebApiMapas.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SalvarLocalizacao([FromBody] LocalizacaoModel novaLocalizacao)
+        public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
             // Validação simples exigida no seu escopo da SA:
             if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90 ||
