@@ -18,19 +18,26 @@ namespace WebApiMapas.Repositories
             _context = context;
         }
 
-        public async Task<List<Localizacao>> GetAll()
+        public async Task<List<Localizacao>> GetAll() 
             => await _context.Localizacoes.ToListAsync();
 
-
         public async Task<Localizacao> GetById(int id)
-            => await _context.Localizacoes.FindAsync(id);
+        {
+            var localizacao = await _context.Localizacoes.FindAsync(id);
+
+            if (localizacao == null)
+            {
+                throw new KeyNotFoundException($"Localização com ID {id} não encontrada.");
+            }
+
+            return localizacao;
+        }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="localizacao"></param>
         /// <returns></returns>
-        /// 
         public async Task Add(Localizacao localizacao)
         {
             _context.Localizacoes.Add(localizacao);

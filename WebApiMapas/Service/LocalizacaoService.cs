@@ -5,7 +5,7 @@ namespace WebApiMapas.Service
 {
     /// <summary>
     /// Serviço responsável por gerenciar operações relacionadas a localizações georreferenciadas.
-   /// </summary>
+    /// </summary>
     public class LocalizacaoService
     {
         /// <summary>
@@ -23,6 +23,12 @@ namespace WebApiMapas.Service
         {
             _repo = repo;
         }
+
+        public async Task<List<Localizacao>> Listar() 
+            => await _repo.GetAll();
+
+        public async Task<Localizacao> GetById(int id) 
+            => await _repo.GetById(id);
 
         /// <summary>
         /// Criar uma nova localização - Chama o método Add do repository 
