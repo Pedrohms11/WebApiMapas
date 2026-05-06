@@ -54,5 +54,8 @@ namespace WebApiMapas.Service
             await _repo.Add(localizacao);
             return localizacao;
         }
+
+        public async Task Delete(int id)
+            => await _repo.Delete(id);
     }
 }
