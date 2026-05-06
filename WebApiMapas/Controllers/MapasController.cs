@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Mvc;
 using WebApiMapas.Models;
 using WebApiMapas.Service;
 
@@ -35,73 +36,34 @@ namespace WebApiMapas.Controllers
             _service = service;
         }
 
-        /// <summary>
-        /// POST: api/Mapas - Cria uma nova localização georeferenciada.
-        /// </summary>
-        /// <remarks>
-        /// O endpoint recebe um objeto Localizacao no corpo da requisição e tenta criar um novo registro 
-        /// no Firebase.
-        /// </remarks>
-        /// <param name="localizacao">Objeto contendo os dados da localização 
-        /// (Latitude, Longitude, Nome).</param>
-        /// <returns>Retorna a localização criada com seu respectivo ID.</returns>        
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Post([FromBody] Localizacao localizacao)
+        public async Task<IActionResult> SalvarLocalizacao([FromBody] LocalizacaoModel novaLocalizacao)
         {
+            // Validação simples exigida no seu escopo da SA:
+            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90 ||
+                novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
+            {
+                return BadRequest("Coordenadas geográficas inválidas!");
+            }
+
             try
             {
-                if (localizacao == null)
-                {
-                    return BadRequest(new
-                    {
-                        erro = "Requisição Inválida",
-                        mensagem = "O campo da localização não pode ser nulo.",
-                        detalhe = "Certifique-se que os dados estão no formato correto."
-                    });
-                }
+                // A coleção "localizacoes" é criada sozinha se não existir ainda!
+                CollectionReference colecao = _firestoreDb.Collection("localizacoes");
 
-                var novaLocalizacao = await _service.Criar(localizacao);
+                // Salva no Firestore
+                DocumentReference docRef = await colecao.AddAsync(novaLocalizacao);
 
-                // Retorno 201: Indica sucesso ao gravar o registro no banco
-                return CreatedAtAction(nameof(GetById), new { id = novaLocalizacao.Id }, novaLocalizacao);
-            }
+                // Adiciona o ID gerado ao objeto de retorno
+                novaLocalizacao.Id = docRef.Id;
 
-            // Validação para localização já existente (ex: coordenadas duplicadas ou mesmo nome)
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new
-                {
-                    erro = "Conflito",
-                    mensagem = "Não foi possível cadastrar a localização pois ela já existe.",
-                    detalhe = ex.Message
-                });
-            }
-
-            // Validação para campos obrigatórios ou valores inválidos (ex: Lat fora de -90 a 90)
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    erro = "Dados Inválidos",
-                    mensagem = "Os dados fornecidos estão incorretos ou fora do padrão.",
-                    detalhe = ex.Message
-                });
+                return Ok(new { mensagem = "Localização persistida com sucesso!", dados = novaLocalizacao });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    erro = "Erro Interno do Servidor",
-                    mensagem = "Ocorreu um erro inesperado ao salvar a localização.",
-                    detalhe = ex.Message
-                });
+                return StatusCode(500, $"Erro interno ao salvar no Firebase: {ex.Message}");
             }
         }
-
         /// <summary>
         ///  Delete Api para deletar um georeferenciamento existente, caso o id não exista retorna NotFound, caso exista deleta e retorna NoContent
         /// </summary>
