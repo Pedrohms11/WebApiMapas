@@ -27,6 +27,8 @@ namespace WebApiMapas.Controllers
         /// </summary>
         private readonly LocalizacaoService _service;
 
+        private readonly FirestoreDb _firestoreDb = FirestoreDb.Create("webapimapas");
+
         /// <summary>
         /// Construtor da classe MapasController.
         /// </summary>
@@ -98,7 +100,7 @@ namespace WebApiMapas.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SalvarLocalizacao([FromBody] LocalizacaoModel novaLocalizacao)
+        public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
             // Validação simples exigida no seu escopo da SA:
             if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90 ||
@@ -130,6 +132,11 @@ namespace WebApiMapas.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
         public async Task<IActionResult> Delete(int id)
         {
             var existente = await _service.GetById(id);
