@@ -5,7 +5,7 @@ namespace WebApiMapas.Service
 {
     /// <summary>
     /// Serviço responsável por gerenciar operações relacionadas a localizações georreferenciadas.
-   /// </summary>
+    /// </summary>
     public class LocalizacaoService
     {
         /// <summary>
