@@ -10,7 +10,7 @@ namespace WebApiMapas.Repositories
         /// <summary>
         /// Implementação concreta do repositório de localizações georreferenciadas.
         /// </summary>
-        
+
         private readonly AppDbContext _context;
 
         public LocalizacaoRepository(AppDbContext context)
@@ -66,4 +66,5 @@ namespace WebApiMapas.Repositories
             }
 
         }
+    }
 }
