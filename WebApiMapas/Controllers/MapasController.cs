@@ -107,13 +107,13 @@ namespace WebApiMapas.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        public async Task<IActioResult> Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var existente = await _service.ObterPorId(id);
+            var existente = await _service.GetById(id);
             if (existente == null)
                 return NotFound();
 
-            await _service.Deletar(id);
+            await _service.Delete(id);
             return NoContent();
         }
     }
