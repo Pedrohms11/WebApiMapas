@@ -27,7 +27,7 @@ namespace WebApiMapas.Controllers
         /// </summary>
         private readonly LocalizacaoService _service;
 
-        private readonly FirestoreDb _firestoreDb;
+        private readonly FirestoreDb _firestoreDb = FirestoreDb.Create("webapimapas");
 
         /// <summary>
         /// Construtor da classe MapasController.

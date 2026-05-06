@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Google.Cloud.Firestore;
 using WebApiMapas.Data;
 using WebApiMapas.Models;
 using WebApiMapas.Repositories.Interfaces;
@@ -7,71 +7,64 @@ namespace WebApiMapas.Repositories
 {
     public class LocalizacaoRepository : ILocalizacaoRepository
     {
-        /// <summary>
-        /// Implementação concreta do repositório de localizações georreferenciadas.
-        /// </summary>
+        private readonly CollectionReference _collection;
 
-        private readonly AppDbContext _context;
-
-        public LocalizacaoRepository(AppDbContext context)
+        public LocalizacaoRepository(FirestoreService context)
         {
-            _context = context;
+            _collection = context.Db.Collection("Localizacoes");
         }
 
-        public async Task<List<Localizacao>> GetAll() 
-            => await _context.Localizacoes.ToListAsync();
+        public async Task<List<Localizacao>> GetAll()
+        {
+            var snapshot = await _collection.GetSnapshotAsync();
+            return snapshot.Documents.Select(doc => doc.ConvertTo<Localizacao>()).ToList();
+        }
 
+        // Recebe o INT e converte para string na hora de buscar o documento
         public async Task<Localizacao> GetById(int id)
         {
-            var localizacao = await _context.Localizacoes.FindAsync(id);
+            var snapshot = await _collection.Document(id.ToString()).GetSnapshotAsync();
 
-            if (localizacao == null)
-            {
+            if (!snapshot.Exists)
                 throw new KeyNotFoundException($"Localização com ID {id} não encontrada.");
-            }
 
-            return localizacao;
+            return snapshot.ConvertTo<Localizacao>();
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="localizacao"></param>
-        /// <returns></returns>
         public async Task Add(Localizacao localizacao)
         {
-            _context.Localizacoes.Add(localizacao);
-            await _context.SaveChangesAsync();
+            // IMPORTANTE: Aqui assumimos que "localizacao.Id" já possui um número inteiro válido!
+            // Usamos o SetAsync no documento com o nome do ID (ex: documento "1")
+            var docRef = _collection.Document(localizacao.Id.ToString());
+            await docRef.SetAsync(localizacao);
         }
 
         public async Task Update(Localizacao localizacao)
         {
-            var existing = await _context.Localizacoes.FindAsync(localizacao.Id);
+            var docRef = _collection.Document(localizacao.Id.ToString());
 
-            if (existing != null)
-            {
-                _context.Localizacoes.Update(localizacao);
-                await _context.SaveChangesAsync();
-            }
-            else
+            // Verifica se o documento existe antes de atualizar
+            var snapshot = await docRef.GetSnapshotAsync();
+            if (!snapshot.Exists)
             {
                 throw new KeyNotFoundException($"Localização com ID {localizacao.Id} não encontrada.");
             }
+
+            await docRef.SetAsync(localizacao, SetOptions.MergeAll);
         }
 
+        // Recebe o INT e converte para string na hora de deletar
         public async Task Delete(int id)
         {
-            var localizacao = await _context.Localizacoes.FindAsync(id);
-            if (localizacao != null)
-            {
-                _context.Localizacoes.Remove(localizacao);
-                await _context.SaveChangesAsync();
-            }
-            else
+            var docRef = _collection.Document(id.ToString());
+
+            var snapshot = await docRef.GetSnapshotAsync();
+            if (!snapshot.Exists)
             {
                 throw new KeyNotFoundException($"Localização com ID {id} não encontrada.");
             }
 
+            await docRef.DeleteAsync();
         }
     }
 }
