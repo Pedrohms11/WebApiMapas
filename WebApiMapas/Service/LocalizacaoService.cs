@@ -1,4 +1,5 @@
-﻿using WebApiMapas.Repositories.Interfaces;
+﻿using WebApiMapas.Models;
+using WebApiMapas.Repositories.Interfaces;
 
 namespace WebApiMapas.Service
 {

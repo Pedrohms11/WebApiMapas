@@ -1,4 +1,6 @@
-﻿namespace WebApiMapas.Repositories.Interfaces
+﻿using WebApiMapas.Models;
+
+namespace WebApiMapas.Repositories.Interfaces
 {
     /// <summary>
     /// Interface que define os métodos para acessar e manipular dados 

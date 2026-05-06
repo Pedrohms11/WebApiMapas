@@ -1,6 +1,6 @@
 ﻿using ApiWebMapas.Data;
-using ApiWebMapas.Models;
 using Microsoft.EntityFrameworkCore;
+using WebApiMapas.Models;
 using WebApiMapas.Repositories.Interfaces;
 
 namespace WebApiMapas.Repositories

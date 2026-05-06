@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WebApiMapas.Models;
 using WebApiMapas.Service;
 
 namespace WebApiMapas.Controllers
