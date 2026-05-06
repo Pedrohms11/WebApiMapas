@@ -31,7 +31,7 @@ namespace WebApiMapas.Service
         /// <returns>A localização persistida com os dados atualizados.</returns>
         public async Task<Localizacao> Criar(Localizacao localizacao)
         {
-            // Validação básica dos dados de entrada
+           
             await _repo.Add(localizacao);
             return localizacao;
         }
