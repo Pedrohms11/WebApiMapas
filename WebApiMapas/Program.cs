@@ -9,12 +9,14 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI();
+app.UseSwaggerUI(opitions =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    opitions.RoutePrefix = "documentação";
+    opitions.SwaggerEndpoint("/swagger/v1/swagger.json", "API de Geolocalização v1");
+
+});
 
 app.UseHttpsRedirection();
 
