@@ -69,18 +69,23 @@ namespace WebApiMapas.Controllers
         [HttpPost]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
-            if (novaLocalizacao == null) return BadRequest("Corpo vazio.");
+            if (novaLocalizacao == null) 
+                return BadRequest("Corpo vazio.");
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
                 return BadRequest("O campo 'logradouro' é obrigatório.");
 
-            // Regra de negócio da SA
-            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90 ||
-                novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
+            // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         
+            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
             {
-                return BadRequest("Coordenadas geográficas inválidas.");
+                return BadRequest("Latitude inválida. O valor deve estar entre -90 e 90 graus.");
             }
 
+            // Validação geográfica: A longitude deve estar entre -180 (Oeste) e 180 (Leste).
+            if (novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
+            {
+                return BadRequest("Longitude inválida. O valor deve estar entre -180 e 180 graus.");
+            }
             try
             {
                 // Deixa o Service processar a gravação no Firebase
