@@ -200,6 +200,58 @@ namespace WebApiMapas.Controllers
         }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+
+        /// <summary>
+        /// PUT: api/Mapas/{id} - Atualiza uma localização específica por ID.
+        /// </summary>
+        /// <remarks>
+        /// PUT: api/Mapas/{id} - Atualiza uma localização específica por ID.
+        /// </remarks>
+        /// <param name="id"></param>
+        /// <param name="localizacaoAtualizada"></param>
+        /// <returns></returns>
+        /// <response code="200">Localização atualizada com sucesso.</response>
+        /// <response code="400">Dados inválidos.</response>
+        /// <response code="404">Localização não encontrada.</response>
+        /// <response code="500">Erro ao atualizar localização.</response>
+
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Atualizar(string id, [FromBody] Localizacao atualizadaLocalizacao)
+        {
+            if (atualizadaLocalizacao == null)
+                return BadRequest(new { erro = "Requisição inválida", detalhe = "O corpo do JSON não pode estar vazio." });
+            try
+            {
+                var existente = await _service.ObterPorId(id);
+                if (existente == null) return NotFound(new { mensagem = $"ID {id} não encontrado." });
+                // Atualiza os campos necessários
+                existente.Logradouro = atualizadaLocalizacao.Logradouro ?? existente.Logradouro;
+                existente.Numero = atualizadaLocalizacao.Numero ?? existente.Numero;
+                existente.Bairro = atualizadaLocalizacao.Bairro ?? existente.Bairro;
+                existente.Cep = atualizadaLocalizacao.Cep ?? existente.Cep;
+                existente.Latitude = atualizadaLocalizacao.Latitude != 0 ? atualizadaLocalizacao.Latitude : existente.Latitude;
+                existente.Longitude = atualizadaLocalizacao.Longitude != 0 ? atualizadaLocalizacao.Longitude : existente.Longitude;
+                await _service.Atualizar    (id, existente);
+                return Ok(new { mensagem = $"Localização com ID {id} atualizada com sucesso.", dados = existente });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { erro = "Erro no servidor", detalhe = ex.Message });
+            }
+        }
+
+
+        /// <summary>
         /// DELETE: api/Mapas/{id} - Deleta uma localização específica por ID.
         /// </summary>
         /// <remarks>
