@@ -2,6 +2,7 @@
 using WebApiMapas.Data;
 using WebApiMapas.Models;
 using WebApiMapas.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace WebApiMapas.Service
 {
@@ -15,15 +16,19 @@ namespace WebApiMapas.Service
         /// dados geográficos no banco de dados Firebase
         /// </summary>
         private readonly ILocalizacaoRepository _repo;
+        private readonly ILogger<LocalizacaoService> _logger;
+        private readonly FirestoreDb _firestoreDb;
 
         /// <summary>
         /// Construtor da classe - Recebe o repository de localizações
         /// via injeção de dependência
         /// </summary>
         /// <param name="repo">Interface do repositório de dados geográficos</param>
-        public LocalizacaoService(ILocalizacaoRepository repo)
+        public LocalizacaoService(ILocalizacaoRepository repo, ILogger<LocalizacaoService> logger, FirestoreDb firestoreDb)
         {
             _repo = repo;
+            _logger = logger;
+            _firestoreDb = firestoreDb;
         }
 
         /// <summary>
