@@ -11,59 +11,56 @@ namespace WebApiMapas.Repositories
 
         public LocalizacaoRepository(FirestoreService context)
         {
-            _collection = context.Db.Collection("Localizacoes");
+            // Verifique se no seu Firebase a coleção se chama "Localizacoes" ou "localizacoes" (minúsculo)
+            _collection = context.Db.Collection("localizacoes");
         }
 
         public async Task<List<Localizacao>> GetAll()
         {
             var snapshot = await _collection.GetSnapshotAsync();
-            return snapshot.Documents.Select(doc => doc.ConvertTo<Localizacao>()).ToList();
+            return snapshot.Documents.Select(doc => {
+                var item = doc.ConvertTo<Localizacao>();
+                item.Id = doc.Id; // Garante que o ID do documento vá para a Model
+                return item;
+            }).ToList();
         }
 
-        // Recebe o INT e converte para string na hora de buscar o documento
-        public async Task<Localizacao> GetById(int id)
+        // Agora recebe STRING conforme a Interface
+        public async Task<Localizacao> GetById(string id)
         {
-            var snapshot = await _collection.Document(id.ToString()).GetSnapshotAsync();
+            var snapshot = await _collection.Document(id).GetSnapshotAsync();
 
             if (!snapshot.Exists)
                 throw new KeyNotFoundException($"Localização com ID {id} não encontrada.");
 
-            return snapshot.ConvertTo<Localizacao>();
+            var localizacao = snapshot.ConvertTo<Localizacao>();
+            localizacao.Id = snapshot.Id;
+            return localizacao;
         }
 
         public async Task Add(Localizacao localizacao)
         {
-            // IMPORTANTE: Aqui assumimos que "localizacao.Id" já possui um número inteiro válido!
-            // Usamos o SetAsync no documento com o nome do ID (ex: documento "1")
-            var docRef = _collection.Document(localizacao.Id.ToString());
-            await docRef.SetAsync(localizacao);
+            // Se o ID vier vazio, o Firebase gera um automático
+            if (string.IsNullOrEmpty(localizacao.Id))
+            {
+                await _collection.AddAsync(localizacao);
+            }
+            else
+            {
+                await _collection.Document(localizacao.Id).SetAsync(localizacao);
+            }
         }
 
         public async Task Update(Localizacao localizacao)
         {
-            var docRef = _collection.Document(localizacao.Id.ToString());
-
-            // Verifica se o documento existe antes de atualizar
-            var snapshot = await docRef.GetSnapshotAsync();
-            if (!snapshot.Exists)
-            {
-                throw new KeyNotFoundException($"Localização com ID {localizacao.Id} não encontrada.");
-            }
-
+            var docRef = _collection.Document(localizacao.Id);
             await docRef.SetAsync(localizacao, SetOptions.MergeAll);
         }
 
-        // Recebe o INT e converte para string na hora de deletar
-        public async Task Delete(int id)
+        // Agora recebe STRING conforme a Interface
+        public async Task Delete(string id)
         {
-            var docRef = _collection.Document(id.ToString());
-
-            var snapshot = await docRef.GetSnapshotAsync();
-            if (!snapshot.Exists)
-            {
-                throw new KeyNotFoundException($"Localização com ID {id} não encontrada.");
-            }
-
+            var docRef = _collection.Document(id);
             await docRef.DeleteAsync();
         }
     }

@@ -9,9 +9,9 @@ namespace WebApiMapas.Repositories.Interfaces
     public interface ILocalizacaoRepository
     {
         Task<List<Localizacao>> GetAll();   
-        Task<Localizacao> GetById(int id);
+        Task<Localizacao> GetById(string id);
         Task Add(Localizacao localizacao);
         Task Update(Localizacao localizacao);
-        Task Delete(int id);
+        Task Delete(string id);
     }
 }

@@ -18,7 +18,6 @@ builder.Services.AddScoped<LocalizacaoService>();
 var app = builder.Build();
 
 app.UseSwagger();
-app.UseSwaggerUI();
 app.UseSwaggerUI(opitions =>
 {
     opitions.RoutePrefix = "documentação";
