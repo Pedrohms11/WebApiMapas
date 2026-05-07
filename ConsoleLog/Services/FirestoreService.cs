@@ -1,4 +1,5 @@
 ﻿using ConsoleLog.Models;
+using Google.Cloud.Firestore;
 using Microsoft.Extensions.Configuration;
 
 
@@ -186,44 +187,7 @@ namespace ConsoleLog.Services
             }
         }
 
-        /// <summary>
-        /// Converte documento Firestore para objeto Localizacao
-        /// </summary>
-        private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
-        {
-            try
-            {
-                if (!document.Exists)
-                    return null;
-
-                var dados = document.ToDictionary();
-
-                // Converte Timestamp do Firestore para DateTime
-                DateTime timestamp = DateTime.UtcNow;
-                if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
-                {
-                    timestamp = ts.ToDateTime();
-                }
-
-                return new Localizacao
-                {
-                    Id = Convert.ToInt32(document.Id),
-                    Logradouro = dados.ContainsKey("Logradouro") ? dados["Logradouro"]?.ToString() ?? string.Empty : string.Empty,
-                    Numero = dados.ContainsKey("Numero") ? dados["Numero"]?.ToString() ?? string.Empty : string.Empty,
-                    Bairro = dados.ContainsKey("Bairro") ? dados["Bairro"]?.ToString() ?? string.Empty : string.Empty,
-                    Cep = dados.ContainsKey("Cep") ? dados["Cep"]?.ToString() ?? string.Empty : string.Empty,
-                    Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"]) : 0,
-                    Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"]) : 0,
-                    Timestamp = timestamp
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
-                return null;
-            }
-        }
-
+        
         /// <summary>
         /// Verifica se a conexão com Firestore está ativa
         /// </summary>
@@ -239,6 +203,194 @@ namespace ConsoleLog.Services
             {
                 _logger.LogError("Falha na conexão com Firestore", ex, "FIRESTORE");
                 return false;
+            }
+        }
+        /// <summary>
+        /// Converte documento Firestore para objeto Localizacao
+        /// </summary>
+        private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
+        {
+            try
+            {
+                if (!document.Exists)
+                    return null;
+
+                // Método seguro para obter valores do documento
+                var localizacao = new Localizacao();
+
+                // 1. ID (vem do DocumentId, não do conteúdo)
+                if (string.(document.Id, out int id))
+                {
+                    localizacao.Id = id;
+                }
+                else
+                {
+                    _logger.LogWarning($"ID do documento não é um número válido: {document.Id}", "FIRESTORE");
+                    return null;
+                }
+
+                // 2. Logradouro (string)
+                if (document.ContainsField("Logradouro"))
+                {
+                    var valor = document.GetValue<string>("Logradouro");
+                    localizacao.Logradouro = valor ?? string.Empty;
+                }
+                else
+                {
+                    localizacao.Logradouro = string.Empty;
+                }
+
+                // 3. Numero (string)
+                if (document.ContainsField("Numero"))
+                {
+                    var valor = document.GetValue<string>("Numero");
+                    localizacao.Numero = valor ?? string.Empty;
+                }
+                else
+                {
+                    localizacao.Numero = string.Empty;
+                }
+
+                // 4. Bairro (string)
+                if (document.ContainsField("Bairro"))
+                {
+                    var valor = document.GetValue<string>("Bairro");
+                    localizacao.Bairro = valor ?? string.Empty;
+                }
+                else
+                {
+                    localizacao.Bairro = string.Empty;
+                }
+
+                // 5. CEP (string) - CUIDADO: Pode vir como número!
+                if (document.ContainsField("Cep"))
+                {
+                    // Tenta como string primeiro
+                    object cepObj = document.GetValue<object>("Cep");
+
+                    if (cepObj is string cepString)
+                    {
+                        localizacao.Cep = cepString;
+                    }
+                    else if (cepObj is long cepLong)
+                    {
+                        // Se veio como número, converte para string com 8 dígitos
+                        localizacao.Cep = cepLong.ToString("D8");
+                    }
+                    else if (cepObj is int cepInt)
+                    {
+                        localizacao.Cep = cepInt.ToString("D8");
+                    }
+                    else if (cepObj != null)
+                    {
+                        localizacao.Cep = cepObj.ToString() ?? string.Empty;
+                    }
+                    else
+                    {
+                        localizacao.Cep = string.Empty;
+                    }
+                }
+                else
+                {
+                    localizacao.Cep = string.Empty;
+                }
+
+                // 6. Latitude (double)
+                if (document.ContainsField("Latitude"))
+                {
+                    try
+                    {
+                        // Tenta como double primeiro
+                        if (document.TryGetValue<double>("Latitude", out double latitude))
+                        {
+                            localizacao.Latitude = latitude;
+                        }
+                        else
+                        {
+                            // Tenta como object e converte
+                            var latObj = document.GetValue<object>("Latitude");
+                            if (latObj != null)
+                            {
+                                localizacao.Latitude = Convert.ToDouble(latObj);
+                            }
+                            else
+                            {
+                                localizacao.Latitude = 0;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        localizacao.Latitude = 0;
+                    }
+                }
+                else
+                {
+                    localizacao.Latitude = 0;
+                }
+
+                // 7. Longitude (double)
+                if (document.ContainsField("Longitude"))
+                {
+                    try
+                    {
+                        if (document.TryGetValue<double>("Longitude", out double longitude))
+                        {
+                            localizacao.Longitude = longitude;
+                        }
+                        else
+                        {
+                            var lngObj = document.GetValue<object>("Longitude");
+                            if (lngObj != null)
+                            {
+                                localizacao.Longitude = Convert.ToDouble(lngObj);
+                            }
+                            else
+                            {
+                                localizacao.Longitude = 0;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        localizacao.Longitude = 0;
+                    }
+                }
+                else
+                {
+                    localizacao.Longitude = 0;
+                }
+
+                // 8. Timestamp (DateTime)
+                if (document.ContainsField("Timestamp"))
+                {
+                    try
+                    {
+                        if (document.TryGetValue<Timestamp>("Timestamp", out Timestamp timestamp))
+                        {
+                            localizacao.Timestamp = timestamp.ToDateTime();
+                        }
+                        else
+                        {
+                            localizacao.Timestamp = DateTime.UtcNow;
+                        }
+                    }
+                    catch
+                    {
+                        localizacao.Timestamp = DateTime.UtcNow;
+                    }
+                }
+                else
+                {
+                    localizacao.Timestamp = DateTime.UtcNow;
+                }
+
+                return localizacao;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
+                return null;
             }
         }
 

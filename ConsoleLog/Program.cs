@@ -1,6 +1,7 @@
 ﻿using ConsoleLog.Data;
 using ConsoleLog.Services;
 using ConsoleLog.Services.Sync;
+using ConsoleLog.View;
 using ConsoleLog.ViewModel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -14,6 +14,8 @@ namespace ConsoleLog.Models
     [Table("Localizacoes")]
     public class Localizacao
     {
+        internal object DataHash;
+
         /// <summary>
         /// Identificador único da localização
         /// </summary>

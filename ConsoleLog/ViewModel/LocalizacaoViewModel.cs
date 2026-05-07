@@ -2,6 +2,7 @@
 using ConsoleLog.Models;
 using ConsoleLog.Services;
 using ConsoleLog.Services.Sync;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
