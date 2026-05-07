@@ -11,22 +11,24 @@ namespace WebApiMapas.Data
 
         public FirestoreService(IConfiguration configuration)
         {
-            var projectId = configuration["Firebase:ProjectId"];
-            var relativeKeyPath = configuration["Firebase:KeyFilePath"];
+            // Pega o ID do projeto e o caminho do arquivo JSON do appsettings.json
+            var projectId = configuration["Firebase:ProjectId"] ?? "web-api-mapas";
+            var relativeKeyPath = configuration["Firebase:KeyFilePath"] ?? "config_API/firebase-key.json";
 
-            // Garante que o caminho comece na pasta onde a API está rodando
+            // Monta o caminho completo onde o arquivo JSON deve estar
             var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeKeyPath);
 
-            if (!File.Exists(fullPath))
+            // Verifica se o arquivo realmente existe na pasta para não dar erro de null
+            if (File.Exists(fullPath))
             {
-                throw new FileNotFoundException($"O arquivo de chave não foi encontrado em: {fullPath}");
+                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", fullPath);
+                Db = FirestoreDb.Create(projectId);
             }
-
-            // Define a variável de ambiente
-            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", fullPath);
-
-            // Inicializa a conexão
-            Db = FirestoreDb.Create(projectId);
+            else
+            {
+                // Se não encontrar, ele avisa no console do Visual Studio
+                Console.WriteLine($"ERRO: Arquivo de credenciais não encontrado em: {fullPath}");
+            }
         }
     }
 }
