@@ -1,6 +1,7 @@
 ﻿using Google.Cloud.Firestore;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.IO;
 
 namespace WebApiMapas.Data
 {
@@ -10,14 +11,21 @@ namespace WebApiMapas.Data
 
         public FirestoreService(IConfiguration configuration)
         {
-            // Busca as configurações do seu appsettings.json
             var projectId = configuration["Firebase:ProjectId"];
-            var keyPath = configuration["Firebase:KeyFilePath"];
+            var relativeKeyPath = configuration["Firebase:KeyFilePath"];
 
-            // Configura a credencial do arquivo JSON que você baixou do Firebase
-            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", keyPath);
+            // Garante que o caminho comece na pasta onde a API está rodando
+            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeKeyPath);
 
-            // Inicializa a conexão com o Firestore
+            if (!File.Exists(fullPath))
+            {
+                throw new FileNotFoundException($"O arquivo de chave não foi encontrado em: {fullPath}");
+            }
+
+            // Define a variável de ambiente
+            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", fullPath);
+
+            // Inicializa a conexão
             Db = FirestoreDb.Create(projectId);
         }
     }
