@@ -1,22 +1,24 @@
 ﻿using ConsoleLog.Models;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace ConsoleLog.Data
 {
-    public class AppDbContext : DbContext
     /// <summary>
-    /// Contexto de banco de dados para a aplicação, utilizando Entity Framework Core
+    /// Contexto do banco de dados SQLite (Camada Data)
     /// </summary>
+    public class AppDbContext : DbContext
     {
         private readonly string _connectionString;
 
         public AppDbContext(string connectionString)
         {
             _connectionString = connectionString;
+        }
 
-        } /// <summary>
-          /// Tabela de Localizações
-          /// </summary>
+        /// <summary>
+        /// Tabela de Localizações
+        /// </summary>
         public DbSet<Localizacao> Localizacoes { get; set; }
 
         /// <summary>
@@ -59,9 +61,10 @@ namespace ConsoleLog.Data
         {
             Database.Migrate();
         }
+
+
+
+
     }
-
-
-
 }
 
