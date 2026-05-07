@@ -1,4 +1,5 @@
-﻿using WebApiMapas.Models;
+﻿using Google.Cloud.Firestore;
+using WebApiMapas.Models;
 using WebApiMapas.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -27,11 +28,49 @@ namespace WebApiMapas.Service
             _logger = logger;
         }
 
-        public async Task<List<Localizacao>> Listar() 
-            => await _repo.GetAll();
+        public async Task<List<Localizacao>> Listar()
+        {
+            // Referência da coleção
+            CollectionReference collectionRef = _firestoreDb.Collection("Localizacoes");
 
-        public async Task<Localizacao> GetById(int id) 
-            => await _repo.GetById(id);
+            // Busca todos os documentos da coleção
+            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync();
+
+            List<Localizacao> lista = new List<Localizacao>();
+
+            foreach (DocumentSnapshot document in snapshot.Documents)
+            {
+                if (document.Exists)
+                {
+                    // Converte o documento para o modelo
+                    var item = document.ConvertTo<Localizacao>();
+
+                    item.Id = document.Id;
+
+                    lista.Add(item);
+                }
+            }
+
+            return lista;
+        }
+
+        public async Task<Localizacao> ObterPorId(string id)
+        {
+            // Referência para a coleção no Firestore
+            DocumentReference docRef = _firestoreDb.Collection("Localizacoes").Document(id);
+
+            // Busca o snapshot do documento de forma assíncrona
+            DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+            if (snapshot.Exists)
+            {
+                // Converte o documento para o seu modelo de classe C#
+                var localizacao = snapshot.ConvertTo<Localizacao>();
+                return localizacao;
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// Criar uma nova localização - Chama o método Add do repository 

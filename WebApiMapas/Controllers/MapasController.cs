@@ -38,6 +38,67 @@ namespace WebApiMapas.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// GET: api/Mapas - Retorna uma lista de todas as localizações cadastradas.
+        /// </summary>
+        /// 
+        /// <remarks>
+        /// GET: api/Mapas - Retorna uma lista de todas as localizações cadastradas.
+        /// </remarks>
+        /// <returns></returns>
+        /// <response code="200">Lista de localizações obtida com sucesso</response>
+        /// <response code="500">Erro interno do servidor ao tentar listar as localizações</response>
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Get()
+        {
+            try
+            {
+                var localizacoes = await _service.Listar();
+                return Ok(new { mensagem = "Lista obtida com sucesso.", localizacoes });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = $"Erro ao listar salas : {ex.Message}" });
+            }
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// <response code="200">Sala encontrada</response>
+        /// <response code="400">Requisição inválida</response>
+        /// <response code="404">Não encontrado</response>
+        /// <response code="500">Erro interno de servidor</response>
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return BadRequest(new { mensagem = "ID inválido" });
+
+            try
+            {
+                var localizacao = await _service.ObterPorId(id);
+
+                if (localizacao == null)
+                    return NotFound(new { mensagem = $"Localização com ID {id} não encontrada." });
+
+                return Ok(new { mensagem = "Localização encontrada com sucesso.", localizacao });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = $"Erro ao buscar sala : {ex.Message}" });
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {

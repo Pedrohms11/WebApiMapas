@@ -1,4 +1,5 @@
 using WebApiMapas.Data;
+using WebApiMapas.Service;
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -10,6 +11,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<FirestoreService>();
+builder.Services.AddScoped<LocalizacaoService>();
 
 var app = builder.Build();
 
