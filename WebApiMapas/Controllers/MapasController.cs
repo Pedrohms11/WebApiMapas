@@ -108,37 +108,65 @@ namespace WebApiMapas.Controllers
         [HttpPost]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
-            // Validação simples exigida no seu escopo da SA:
-            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90 ||
-                novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
+            // Validação de requisição vazia
+            if (novaLocalizacao == null)
             {
-                return BadRequest("Coordenadas geográficas inválidas!");
+                return BadRequest("O corpo da requisição não pode estar vazio.");
+            }
+
+            // Validação de campos obrigatórios
+            if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
+            {
+                return BadRequest("O campo 'logradouro' é obrigatório.");
+            }
+
+            // Validação das coordenadas
+            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
+            {
+                return BadRequest("A latitude deve estar entre -90 e 90 graus.");
+            }
+
+            if (novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
+            {
+                return BadRequest("A longitude deve estar entre -180 e 180 graus.");
+            }
+
+            // Atribui um timestamp atual se não for fornecido
+            if (novaLocalizacao.Timestamp == default)
+            {
+                novaLocalizacao.Timestamp = DateTime.UtcNow;
             }
 
             try
             {
-                // A coleção "localizacoes" é criada sozinha se não existir ainda!
+                // Salva diretamente no Firestore
                 CollectionReference colecao = _firestoreDb.Collection("localizacoes");
-
-                // Salva no Firestore
                 DocumentReference docRef = await colecao.AddAsync(novaLocalizacao);
 
-                // Adiciona o ID gerado ao objeto de retorno
+                // Atribui o ID gerado pelo Firebase de volta ao objeto
                 novaLocalizacao.Id = docRef.Id;
 
-                return Ok(new { mensagem = "Localização persistida com sucesso!", dados = novaLocalizacao });
+                // Retorna HTTP 201 (Created) com os dados salvos
+                return Created("", new
+                {
+                    mensagem = "Localização validada e salva com sucesso no Firebase!",
+                    dados = novaLocalizacao
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erro interno ao salvar no Firebase: {ex.Message}");
+                Console.WriteLine($"[ERRO FIREBASE]: {ex.Message}");
+                return StatusCode(500, "Erro interno ao tentar salvar no banco de dados NoSQL.");
             }
         }
-        /// <summary>
-        ///  Delete Api para deletar um georeferenciamento existente, caso o id não exista retorna NotFound, caso exista deleta e retorna NoContent
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        [HttpDelete("{id}")]
+    
+
+/// <summary>
+///  Delete Api para deletar um georeferenciamento existente, caso o id não exista retorna NotFound, caso exista deleta e retorna NoContent
+/// </summary>
+/// <param name="id"></param>
+/// <returns></returns>
+[HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
