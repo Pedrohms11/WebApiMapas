@@ -102,15 +102,44 @@ namespace WebApiMapas.Service
             if (localizacao.Longitude < -180 || localizacao.Longitude > 180)
                 throw new ArgumentException("A longitude deve estar entre -180 e 180 graus.");
 
-            // Salva direto no Firestore (substitui o antigo _repo.Add)
-            CollectionReference colecao = _firestoreDb.Collection("localizacoes");
-            DocumentReference docRef = await colecao.AddAsync(localizacao);
+            // 1. Referência para o documento que guarda o contador
+            DocumentReference contadorRef = _firestoreDb.Collection("configuracoes").Document("contador_localizacoes");
 
-            // Atualiza a model com o ID gerado pelo Firebase e devolve
-            localizacao.Id = docRef.Id;
+            // 2. Executa a transação
+            int novoIdNumerico = await _firestoreDb.RunTransactionAsync(async transaction =>
+            {
+                DocumentSnapshot snapshot = await transaction.GetSnapshotAsync(contadorRef);
+                int idAtual = 0;
+
+                if (snapshot.Exists)
+                {
+                    // Pega o valor atual do contador
+                    idAtual = snapshot.GetValue<int>("ultimoId");
+                }
+
+                int proximoId = idAtual + 1;
+
+                // Atualiza o documento do contador com o novo valor
+                Dictionary<string, object> atualizacaoContador = new Dictionary<string, object>
+        {
+            { "ultimoId", proximoId }
+        };
+                transaction.Set(contadorRef, atualizacaoContador, SetOptions.MergeAll);
+
+                return proximoId;
+            });
+
+            // 3. O Firestore exige que o ID do documento seja uma string. 
+            // Convertemos o número para string (ex: "1", "2", "3")
+            string idString = novoIdNumerico.ToString();
+            DocumentReference docRef = _firestoreDb.Collection("localizacoes").Document(idString);
+
+            // 4. Salva a localização com o ID numérico forçado
+            localizacao.Id = idString;
+            await docRef.SetAsync(localizacao);
+
             return localizacao;
         }
-
         /// <summary>
         /// Atualiza uma localização existente no Firebase. 
         /// </summary>
