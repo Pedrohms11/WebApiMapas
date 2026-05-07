@@ -206,193 +206,123 @@ namespace ConsoleLog.Services
             }
         }
         /// <summary>
-        /// Converte documento Firestore para objeto Localizacao
-        /// </summary>
-        private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
+/// Converte documento Firestore para objeto Localizacao (versão com Dictionary)
+/// </summary>
+private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
+{
+    try
+    {
+        if (!document.Exists)
+            return null;
+
+        var dados = document.ToDictionary();
+        var localizacao = new Localizacao();
+        
+        // 1. ID - vem do DocumentId
+        if (!int.TryParse(document.Id, out int id))
+        {
+            _logger.LogWarning($"ID inválido: {document.Id}", "FIRESTORE");
+            return null;
+        }
+        localizacao.Id = id;
+
+        // 2. Logradouro
+        localizacao.Logradouro = dados.ContainsKey("Logradouro") 
+            ? dados["Logradouro"]?.ToString() ?? string.Empty 
+            : string.Empty;
+
+        // 3. Numero
+        localizacao.Numero = dados.ContainsKey("Numero") 
+            ? dados["Numero"]?.ToString() ?? string.Empty 
+            : string.Empty;
+
+        // 4. Bairro
+        localizacao.Bairro = dados.ContainsKey("Bairro") 
+            ? dados["Bairro"]?.ToString() ?? string.Empty 
+            : string.Empty;
+
+        // 5. CEP - TRATAMENTO ESPECIAL para número
+        if (dados.ContainsKey("Cep"))
+        {
+            var cepObj = dados["Cep"];
+            if (cepObj is string cepStr)
+            {
+                localizacao.Cep = cepStr;
+            }
+            else if (cepObj is long cepLong)
+            {
+                localizacao.Cep = cepLong.ToString("D8"); // Formata como 8 dígitos
+            }
+            else if (cepObj is int cepInt)
+            {
+                localizacao.Cep = cepInt.ToString("D8");
+            }
+            else if (cepObj != null)
+            {
+                localizacao.Cep = cepObj.ToString() ?? string.Empty;
+            }
+            else
+            {
+                localizacao.Cep = string.Empty;
+            }
+        }
+        else
+        {
+            localizacao.Cep = string.Empty;
+        }
+
+        // 6. Latitude
+        if (dados.ContainsKey("Latitude"))
         {
             try
             {
-                if (!document.Exists)
-                    return null;
-
-                // Método seguro para obter valores do documento
-                var localizacao = new Localizacao();
-
-                // 1. ID (vem do DocumentId, não do conteúdo)
-                if (string.(document.Id, out int id))
-                {
-                    localizacao.Id = id;
-                }
-                else
-                {
-                    _logger.LogWarning($"ID do documento não é um número válido: {document.Id}", "FIRESTORE");
-                    return null;
-                }
-
-                // 2. Logradouro (string)
-                if (document.ContainsField("Logradouro"))
-                {
-                    var valor = document.GetValue<string>("Logradouro");
-                    localizacao.Logradouro = valor ?? string.Empty;
-                }
-                else
-                {
-                    localizacao.Logradouro = string.Empty;
-                }
-
-                // 3. Numero (string)
-                if (document.ContainsField("Numero"))
-                {
-                    var valor = document.GetValue<string>("Numero");
-                    localizacao.Numero = valor ?? string.Empty;
-                }
-                else
-                {
-                    localizacao.Numero = string.Empty;
-                }
-
-                // 4. Bairro (string)
-                if (document.ContainsField("Bairro"))
-                {
-                    var valor = document.GetValue<string>("Bairro");
-                    localizacao.Bairro = valor ?? string.Empty;
-                }
-                else
-                {
-                    localizacao.Bairro = string.Empty;
-                }
-
-                // 5. CEP (string) - CUIDADO: Pode vir como número!
-                if (document.ContainsField("Cep"))
-                {
-                    // Tenta como string primeiro
-                    object cepObj = document.GetValue<object>("Cep");
-
-                    if (cepObj is string cepString)
-                    {
-                        localizacao.Cep = cepString;
-                    }
-                    else if (cepObj is long cepLong)
-                    {
-                        // Se veio como número, converte para string com 8 dígitos
-                        localizacao.Cep = cepLong.ToString("D8");
-                    }
-                    else if (cepObj is int cepInt)
-                    {
-                        localizacao.Cep = cepInt.ToString("D8");
-                    }
-                    else if (cepObj != null)
-                    {
-                        localizacao.Cep = cepObj.ToString() ?? string.Empty;
-                    }
-                    else
-                    {
-                        localizacao.Cep = string.Empty;
-                    }
-                }
-                else
-                {
-                    localizacao.Cep = string.Empty;
-                }
-
-                // 6. Latitude (double)
-                if (document.ContainsField("Latitude"))
-                {
-                    try
-                    {
-                        // Tenta como double primeiro
-                        if (document.TryGetValue<double>("Latitude", out double latitude))
-                        {
-                            localizacao.Latitude = latitude;
-                        }
-                        else
-                        {
-                            // Tenta como object e converte
-                            var latObj = document.GetValue<object>("Latitude");
-                            if (latObj != null)
-                            {
-                                localizacao.Latitude = Convert.ToDouble(latObj);
-                            }
-                            else
-                            {
-                                localizacao.Latitude = 0;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        localizacao.Latitude = 0;
-                    }
-                }
-                else
-                {
-                    localizacao.Latitude = 0;
-                }
-
-                // 7. Longitude (double)
-                if (document.ContainsField("Longitude"))
-                {
-                    try
-                    {
-                        if (document.TryGetValue<double>("Longitude", out double longitude))
-                        {
-                            localizacao.Longitude = longitude;
-                        }
-                        else
-                        {
-                            var lngObj = document.GetValue<object>("Longitude");
-                            if (lngObj != null)
-                            {
-                                localizacao.Longitude = Convert.ToDouble(lngObj);
-                            }
-                            else
-                            {
-                                localizacao.Longitude = 0;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        localizacao.Longitude = 0;
-                    }
-                }
-                else
-                {
-                    localizacao.Longitude = 0;
-                }
-
-                // 8. Timestamp (DateTime)
-                if (document.ContainsField("Timestamp"))
-                {
-                    try
-                    {
-                        if (document.TryGetValue<Timestamp>("Timestamp", out Timestamp timestamp))
-                        {
-                            localizacao.Timestamp = timestamp.ToDateTime();
-                        }
-                        else
-                        {
-                            localizacao.Timestamp = DateTime.UtcNow;
-                        }
-                    }
-                    catch
-                    {
-                        localizacao.Timestamp = DateTime.UtcNow;
-                    }
-                }
-                else
-                {
-                    localizacao.Timestamp = DateTime.UtcNow;
-                }
-
-                return localizacao;
+                localizacao.Latitude = Convert.ToDouble(dados["Latitude"]);
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
-                return null;
+                localizacao.Latitude = 0;
             }
         }
+        else
+        {
+            localizacao.Latitude = 0;
+        }
+
+        // 7. Longitude
+        if (dados.ContainsKey("Longitude"))
+        {
+            try
+            {
+                localizacao.Longitude = Convert.ToDouble(dados["Longitude"]);
+            }
+            catch
+            {
+                localizacao.Longitude = 0;
+            }
+        }
+        else
+        {
+            localizacao.Longitude = 0;
+        }
+
+        // 8. Timestamp
+        if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
+        {
+            localizacao.Timestamp = ts.ToDateTime();
+        }
+        else
+        {
+            localizacao.Timestamp = DateTime.UtcNow;
+        }
+
+        return localizacao;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
+        return null;
+    }
+}
 
         /// <summary>
         /// Obtém estatísticas do Firestore

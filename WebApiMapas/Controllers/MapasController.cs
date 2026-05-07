@@ -283,5 +283,69 @@ namespace WebApiMapas.Controllers
                 return StatusCode(500, new { erro = $"Erro ao deletar: {ex.Message}" });
             }
         }
+
+        /// <summary>
+        /// DELETE BATCH: api/Mapas/batch - Deleta múltiplas localizações por IDs.
+        /// </summary>
+        /// <remarks>
+        /// DELETE BATCH: api/Mapas/batch - Deleta múltiplas localizações fornecendo uma lista de IDs.
+        /// </remarks>
+        /// <param name="ids">Lista de IDs das localizações a serem deletadas.</param>
+        /// <returns></returns>
+        /// <response code="200">Localizações deletadas com sucesso.</response>
+        /// <response code="400">Nenhum ID fornecido ou lista vazia.</response>
+        /// <response code="500">Erro ao deletar localizações.</response>
+        [HttpDelete("batch")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        {
+            try
+            {
+                if (ids == null || ids.Count == 0)
+                    return BadRequest(new { erro = "Requisição inválida", detalhe = "Nenhum ID fornecido para deleção." });
+
+                var resultados = new List<dynamic>();
+                var idsNaoEncontrados = new List<string>();
+
+                foreach (var id in ids)
+                {
+                    var existente = await _service.ObterPorId(id);
+                    if (existente == null)
+                    {
+                        idsNaoEncontrados.Add(id);
+                    }
+                    else
+                    {
+                        await _service.Delete(id);
+                        resultados.Add(new { id, status = "deletado", logradouro = existente.Logradouro });
+                    }
+                }
+
+                var mensagem = resultados.Count > 0
+                    ? $"{resultados.Count} localização(ões) deletada(s) com sucesso."
+                    : "Nenhuma localização foi deletada.";
+
+                if (idsNaoEncontrados.Count > 0)
+                {
+                    mensagem += $" IDs não encontrados: {string.Join(", ", idsNaoEncontrados)}";
+                }
+
+                return Ok(new
+                {
+                    mensagem,
+                    deletados = resultados,
+                    naoEncontrados = idsNaoEncontrados,
+                    totalSolicitado = ids.Count,
+                    totalDeletados = resultados.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { erro = $"Erro ao deletar em lote: {ex.Message}" });
+            }
+        }
+
     }
 }
