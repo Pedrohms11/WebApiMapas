@@ -2,7 +2,7 @@
 
 namespace WebApiMapas.Models
 {
-    
+    [FirestoreData]
     public class Localizacao
     {
         [FirestoreProperty]
