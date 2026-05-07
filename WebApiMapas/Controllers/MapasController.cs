@@ -208,19 +208,24 @@ namespace WebApiMapas.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Delete(string id)
         {
             try
             {
                 var existente = await _service.ObterPorId(id);
-                if (existente == null) return NotFound();
+
+                if (existente == null) 
+                    return NotFound(new { erro = "Localização não encontrada", detalhe = $"Não foi possível encontrar a localização com ID: {id}" });
 
                 await _service.Delete(id);
-                return NoContent();
+                return Ok(new { mensagem = "Localização deletada com sucesso." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erro ao deletar: {ex.Message}");
+                return StatusCode(500, new { erro = $"Erro ao deletar: {ex.Message}" });
             }
         }
     }
