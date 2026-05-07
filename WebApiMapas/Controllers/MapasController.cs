@@ -1,6 +1,6 @@
 ﻿using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing; 
+using Microsoft.AspNetCore.Routing;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -125,57 +125,64 @@ namespace WebApiMapas.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
-            if (novaLocalizacao == null) 
-                return BadRequest(new 
-                { erro = "Requisição inválida", 
+            if (novaLocalizacao == null)
+                return BadRequest(new
+                {
+                    erro = "Requisição inválida",
                     detalhe = "O corpo do JSON não pode estar vazio."
                 });
 
 
-             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
-                return BadRequest(new 
-                { erro = "Campo obrigatório",
-                    detalhe = "O logradouro deve ser preenchido." 
+            if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
+                return BadRequest(new
+                {
+                    erro = "Campo obrigatório",
+                    detalhe = "O logradouro deve ser preenchido."
                 });
 
-             if (string.IsNullOrWhiteSpace(novaLocalizacao.Numero))
-              {
+            if (string.IsNullOrWhiteSpace(novaLocalizacao.Numero))
+            {
                 novaLocalizacao.Numero = "S/N";
-              }
+            }
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Bairro))
-                return BadRequest(new 
-                { erro = "Campo obrigatório", 
+                return BadRequest(new
+                {
+                    erro = "Campo obrigatório",
                     detalhe = "O bairro deve ser preenchido."
                 });
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Cep))
-                return BadRequest(new 
-                { erro = "Campo obrigatório",
+                return BadRequest(new
+                {
+                    erro = "Campo obrigatório",
                     detalhe = "O CEP deve ser preenchido."
                 });
 
             // Validação básica de formato (Ex: 34000-000 ou 34000000)
             if (novaLocalizacao.Cep.Length < 8)
                 return BadRequest(new
-                { erro = "CEP inválido", 
-                    detalhe = "O CEP deve conter pelo menos 8 caracteres." 
+                {
+                    erro = "CEP inválido",
+                    detalhe = "O CEP deve conter pelo menos 8 caracteres."
                 });
 
             // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         
             if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
             {
-                return BadRequest(new 
-                { erro = "Coordenada inválida", 
-                    detalhe = "A latitude deve estar entre -90 e 90 graus." 
+                return BadRequest(new
+                {
+                    erro = "Coordenada inválida",
+                    detalhe = "A latitude deve estar entre -90 e 90 graus."
                 });
             }
 
             // Validação geográfica: A longitude deve estar entre -180 (Oeste) e 180 (Leste).
             if (novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
             {
-                return BadRequest(new 
-                { erro = "Coordenada inválida", 
+                return BadRequest(new
+                {
+                    erro = "Coordenada inválida",
                     detalhe = "A longitude deve estar entre -180 e 180 graus."
                 });
             }
@@ -184,26 +191,22 @@ namespace WebApiMapas.Controllers
             {
                 // Deixa o Service processar a gravação no Firebase
                 var resultado = await _service.Criar(novaLocalizacao);
-                return Created("", new 
-                { mensagem = $"Localização salva com sucesso! ID: {resultado.Id}",                    
+                return Created("", new
+                {
+                    mensagem = $"Localização salva com sucesso! ID: {resultado.Id}",
                     dados = resultado
                 });
             }
 
             catch (Exception ex)
             {
-                return StatusCode(500, new 
-                { erro = "Erro no servidor", 
-                    detalhe = ex.Message 
+                return StatusCode(500, new
+                {
+                    erro = "Erro no servidor",
+                    detalhe = ex.Message
                 });
             }
         }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
 
         /// <summary>
         /// PUT: api/Mapas/{id} - Atualiza uma localização específica por ID.
@@ -218,14 +221,11 @@ namespace WebApiMapas.Controllers
         /// <response code="400">Dados inválidos.</response>
         /// <response code="404">Localização não encontrada.</response>
         /// <response code="500">Erro ao atualizar localização.</response>
-
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-
-        [HttpPut("{id}")]
         public async Task<IActionResult> Atualizar(string id, [FromBody] Localizacao atualizadaLocalizacao)
         {
             if (atualizadaLocalizacao == null)
@@ -233,7 +233,10 @@ namespace WebApiMapas.Controllers
             try
             {
                 var existente = await _service.ObterPorId(id);
-                if (existente == null) return NotFound(new { mensagem = $"ID {id} não encontrado." });
+
+                if (existente == null) 
+                    return NotFound(new { mensagem = $"ID {id} não encontrado." });
+
                 // Atualiza os campos necessários
                 existente.Logradouro = atualizadaLocalizacao.Logradouro ?? existente.Logradouro;
                 existente.Numero = atualizadaLocalizacao.Numero ?? existente.Numero;
@@ -241,7 +244,8 @@ namespace WebApiMapas.Controllers
                 existente.Cep = atualizadaLocalizacao.Cep ?? existente.Cep;
                 existente.Latitude = atualizadaLocalizacao.Latitude != 0 ? atualizadaLocalizacao.Latitude : existente.Latitude;
                 existente.Longitude = atualizadaLocalizacao.Longitude != 0 ? atualizadaLocalizacao.Longitude : existente.Longitude;
-                await _service.Atualizar    (id, existente);
+
+                await _service.Atualizar(id, existente);
                 return Ok(new { mensagem = $"Localização com ID {id} atualizada com sucesso.", dados = existente });
             }
             catch (Exception ex)
@@ -249,7 +253,6 @@ namespace WebApiMapas.Controllers
                 return StatusCode(500, new { erro = "Erro no servidor", detalhe = ex.Message });
             }
         }
-
 
         /// <summary>
         /// DELETE: api/Mapas/{id} - Deleta uma localização específica por ID.
@@ -269,7 +272,7 @@ namespace WebApiMapas.Controllers
             {
                 var existente = await _service.ObterPorId(id);
 
-                if (existente == null) 
+                if (existente == null)
                     return NotFound(new { erro = "Localização não encontrada", detalhe = $"Não foi possível encontrar a localização com ID: {id}" });
 
                 await _service.Delete(id);
