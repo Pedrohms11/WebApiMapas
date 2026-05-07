@@ -16,16 +16,18 @@ namespace WebApiMapas.Service
         /// </summary>
         private readonly ILocalizacaoRepository _repo;
         private readonly ILogger<LocalizacaoService> _logger;
+        private readonly FirestoreDb _firestoreDb;
 
         /// <summary>
         /// Construtor da classe - Recebe o repository de localizações
         /// via injeção de dependência
         /// </summary>
         /// <param name="repo">Interface do repositório de dados geográficos</param>
-        public LocalizacaoService(ILocalizacaoRepository repo, ILogger<LocalizacaoService> logger)
+        public LocalizacaoService(ILocalizacaoRepository repo, ILogger<LocalizacaoService> logger, FirestoreDb firestoreDb)
         {
             _repo = repo;
             _logger = logger;
+            _firestoreDb = firestoreDb;
         }
 
         public async Task<List<Localizacao>> Listar()
