@@ -79,10 +79,34 @@ namespace WebApiMapas.Controllers
                 });
 
 
-            if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
+             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
                 return BadRequest(new 
                 { erro = "Campo obrigatório",
                     detalhe = "O logradouro deve ser preenchido." 
+                });
+
+             if (string.IsNullOrWhiteSpace(novaLocalizacao.Numero))
+              {
+                novaLocalizacao.Numero = "S/N";
+              }
+
+            if (string.IsNullOrWhiteSpace(novaLocalizacao.Bairro))
+                return BadRequest(new 
+                { erro = "Campo obrigatório", 
+                    detalhe = "O bairro deve ser preenchido."
+                });
+
+            if (string.IsNullOrWhiteSpace(novaLocalizacao.Cep))
+                return BadRequest(new 
+                { erro = "Campo obrigatório",
+                    detalhe = "O CEP deve ser preenchido."
+                });
+
+            // Validação básica de formato (Ex: 34000-000 ou 34000000)
+            if (novaLocalizacao.Cep.Length < 8)
+                return BadRequest(new
+                { erro = "CEP inválido", 
+                    detalhe = "O CEP deve conter pelo menos 8 caracteres." 
                 });
 
             // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         

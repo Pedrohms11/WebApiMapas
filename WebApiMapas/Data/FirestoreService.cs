@@ -11,7 +11,7 @@ namespace WebApiMapas.Data
 
         public FirestoreService(IConfiguration configuration)
         {
-            // Pega o ID do projeto e o caminho do arquivo JSON do appsettings.json
+            // Pega o ID do projeto e o caminho do arquivo JSON do appsettings.json            
             var projectId = configuration["Firebase:ProjectId"] ?? "web-api-mapas";
             var relativeKeyPath = configuration["Firebase:KeyFilePath"] ?? "config_API/firebase-key.json";
 
@@ -25,8 +25,7 @@ namespace WebApiMapas.Data
                 Db = FirestoreDb.Create(projectId);
             }
             else
-            {
-                // Se não encontrar, ele avisa no console do Visual Studio
+            {                
                 Console.WriteLine($"ERRO: Arquivo de credenciais não encontrado em: {fullPath}");
             }
         }
