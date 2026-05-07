@@ -18,7 +18,7 @@ namespace WebApiMapas.Data
             // Monta o caminho completo onde o arquivo JSON deve estar
             var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeKeyPath);
 
-            // Verifica se o arquivo realmente existe na pasta para não dar erro de null
+            // Verifica se o arquivo existe na pasta para não dar erro de null
             if (File.Exists(fullPath))
             {
                 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", fullPath);
