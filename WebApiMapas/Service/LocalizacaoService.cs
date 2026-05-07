@@ -112,6 +112,18 @@ namespace WebApiMapas.Service
         }
 
         /// <summary>
+        /// Atualiza uma localização existente no Firebase. 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="existente"></param>
+        /// <returns></returns>
+        public async Task Atualizar(string id, Localizacao existente)
+        {
+          DocumentReference docRef = _firestoreDb.Collection("localizacoes").Document(id);
+            await docRef.SetAsync(existente, SetOptions.Overwrite);
+        }
+
+        /// <summary>
         /// Deletar um documento pelo ID no Firebase
         /// </summary>
         public async Task Delete(string id) // <-- ATENÇÃO: Mudou de int para string!
