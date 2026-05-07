@@ -75,20 +75,23 @@ namespace WebApiMapas.Controllers
             if (novaLocalizacao == null) 
                 return BadRequest(new 
                 { erro = "Requisição inválida", 
-                    detalhe = "O corpo do JSON não pode estar vazio." });
+                    detalhe = "O corpo do JSON não pode estar vazio."
+                });
 
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
                 return BadRequest(new 
                 { erro = "Campo obrigatório",
-                    detalhe = "O logradouro deve ser preenchido." });
+                    detalhe = "O logradouro deve ser preenchido." 
+                });
 
             // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         
             if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
             {
                 return BadRequest(new 
                 { erro = "Coordenada inválida", 
-                    detalhe = "A latitude deve estar entre -90 e 90 graus." });
+                    detalhe = "A latitude deve estar entre -90 e 90 graus." 
+                });
             }
 
             // Validação geográfica: A longitude deve estar entre -180 (Oeste) e 180 (Leste).
@@ -96,17 +99,26 @@ namespace WebApiMapas.Controllers
             {
                 return BadRequest(new 
                 { erro = "Coordenada inválida", 
-                    detalhe = "A longitude deve estar entre -180 e 180 graus." });
+                    detalhe = "A longitude deve estar entre -180 e 180 graus."
+                });
             }
+
             try
             {
                 // Deixa o Service processar a gravação no Firebase
                 var resultado = await _service.Criar(novaLocalizacao);
-                return Created("", new { mensagem = "Salvo com sucesso!", dados = resultado });
+                return Created("", new 
+                { mensagem = $"Localização salva com sucesso! ID: {resultado.Id}",                    
+                    dados = resultado
+                });
             }
+
             catch (Exception ex)
             {
-                return StatusCode(500, $"Erro ao salvar: {ex.Message}");
+                return StatusCode(500, new 
+                { erro = "Erro no servidor", 
+                    detalhe = ex.Message 
+                });
             }
         }
 
