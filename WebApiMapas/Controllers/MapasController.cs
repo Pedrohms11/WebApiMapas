@@ -145,8 +145,8 @@ namespace WebApiMapas.Controllers
 
         public async Task<IActionResult> Delete(int id)
         {
-            var existente = await _service.GetById(id);
-            if (existente == null)
+           // var existente = await _service.GetById(id);
+            //if (existente == null)
                 return NotFound();
 
             await _service.Delete(id);
