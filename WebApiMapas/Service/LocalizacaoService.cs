@@ -27,8 +27,9 @@ namespace WebApiMapas.Service
         }
 
         /// <summary>
-        /// Listar todas as localizações buscando direto no Firebase
+        /// Listar todas as localizações buscando direto no Firebase, sem passar por um repositório intermediário.
         /// </summary>
+        /// <returns></returns>
         public async Task<List<Localizacao>> Listar()
         {
             CollectionReference collectionRef = _firestoreDb.Collection("localizacoes");
@@ -50,8 +51,10 @@ namespace WebApiMapas.Service
         }
 
         /// <summary>
-        /// Listar uma localização por ID (string) no Firebase
+        /// Listar uma localização por ID buscando direto no Firebase
         /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<Localizacao> ObterPorId(string id)
         {
             DocumentReference docRef = _firestoreDb.Collection("localizacoes").Document(id);
@@ -61,6 +64,26 @@ namespace WebApiMapas.Service
             {
                 var localizacao = snapshot.ConvertTo<Localizacao>();
                 localizacao.Id = snapshot.Id;
+                return localizacao;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Listar uma localização por logradouro buscando direto no Firebase
+        /// </summary>
+        /// <param name="logradouro"></param>
+        /// <returns></returns>
+        public async Task<Localizacao> ObterPorLogradouro(string logradouro)
+        {
+            Query query = _firestoreDb.Collection("localizacoes").WhereEqualTo("Logradouro", logradouro);
+            QuerySnapshot snapshot = await query.GetSnapshotAsync();
+
+            if (snapshot.Documents.Count > 0)
+            {
+                var localizacao = snapshot.Documents[0].ConvertTo<Localizacao>();
+                localizacao.Id = snapshot.Documents[0].Id;
                 return localizacao;
             }
 

@@ -24,6 +24,12 @@ namespace WebApiMapas.Controllers
         /// <summary>
         /// GET: api/Mapas - Retorna todas as localizações cadastradas no Firebase.
         /// </summary>
+        /// <remarks>
+        /// GET: api/Mapas - Retorna todas as localizações cadastradas no Firebase.
+        /// </remarks>
+        /// <returns></returns>
+        /// <response code="200">Lista de localizações obtida com sucesso.</response>
+        /// <response code="500">Erro ao listar localizações.</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -31,7 +37,6 @@ namespace WebApiMapas.Controllers
         {
             try
             {
-                // O Service cuida da lógica de listar
                 var localizacoes = await _service.Listar();
                 return Ok(new { mensagem = "Lista obtida com sucesso.", localizacoes });
             }
@@ -42,11 +47,20 @@ namespace WebApiMapas.Controllers
         }
 
         /// <summary>
-        /// GET: api/Mapas/{id} - Busca uma localização específica por ID.
+        /// GET BY ID: api/Mapas/{id} - Busca uma localização específica por ID.
         /// </summary>
+        /// <remarks>
+        /// GET BY ID: api/Mapas/{id} - Busca uma localização específica por ID.
+        /// </remarks>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// <response code="200">Localização encontrada com sucesso.</response>
+        /// <response code="404">ID não encontrado.</response>
+        /// <response code="500">Erro ao buscar localização por ID.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetById(string id)
         {
             try
@@ -55,17 +69,56 @@ namespace WebApiMapas.Controllers
                 if (localizacao == null)
                     return NotFound(new { mensagem = $"ID {id} não encontrado." });
 
-                return Ok(localizacao);
+                return Ok(new { mensagem = $"Localização encontrada: {localizacao}" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { mensagem = ex.Message });
+                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por ID: {ex.Message}" });
             }
         }
 
         /// <summary>
-        /// POST: api/Mapas - Recebe e valida as coordenadas antes de salvar.
+        /// GET BY LOGRADOURO: api/Mapas/logradouro/{logradouro} - Busca uma localização específica por logradouro.
         /// </summary>
+        /// <remarks>
+        /// GET BY LOGRADOURO: api/Mapas/logradouro/{logradouro} - Busca uma localização específica por logradouro.
+        /// </remarks>
+        /// <param name="logradouro"></param>
+        /// <returns></returns>
+        /// <response code="200">Localização encontrada com sucesso.</response>
+        /// <response code="404">Logradouro não encontrado.</response>
+        /// <response code="500">Erro ao buscar localização por logradouro.</response>
+        [HttpGet("logradouro/{logradouro}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetByLogradouro(string logradouro)
+        {
+            try
+            {
+                var localizacao = await _service.ObterPorLogradouro(logradouro);
+                if (localizacao == null)
+                    return NotFound(new { mensagem = $"Logradouro {logradouro} não encontrado." });
+
+                return Ok(new { mensagem = $"Logradouro encontrado: {localizacao}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por logradouro: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// POST: api/Mapas - Recebe uma nova localização e a salva no Firebase.
+        /// </summary>
+        /// <remarks>
+        /// POST: api/Mapas - Recebe uma nova localização e a salva no Firebase.
+        /// </remarks>
+        /// <param name="novaLocalizacao"></param>
+        /// <returns></returns>
+        /// <response code="201">Localização criada com sucesso.</response>
+        /// <response code="400">Requisição inválida.</response>
+        /// <response code="500">Erro ao criar localização.</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -147,8 +200,13 @@ namespace WebApiMapas.Controllers
         }
 
         /// <summary>
-        /// DELETE: api/Mapas/{id} - Remove o registro do Firebase.
+        /// DELETE: api/Mapas/{id} - Deleta uma localização específica por ID.
         /// </summary>
+        /// <remarks>
+        /// DELETE: api/Mapas/{id} - Deleta uma localização específica por ID.
+        /// </remarks>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
