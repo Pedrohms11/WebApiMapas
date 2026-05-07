@@ -11,7 +11,6 @@ namespace ConsoleLog.Services
     /// </summary>
     public class LogService
     {
-
         private static readonly object _lock = new object();
 
         /// <summary>
@@ -128,6 +127,24 @@ namespace ConsoleLog.Services
             }
         }
 
+        /// <summary>
+        /// Cria uma barra de progresso simples
+        /// </summary>
+        public void LogProgress(int current, int total, string mensagem)
+        {
+            lock (_lock)
+            {
+                var percent = (int)((double)current / total * 100);
+                var barLength = 30;
+                var filledLength = (int)((double)current / total * barLength);
+                var bar = new string('█', filledLength) + new string('░', barLength - filledLength);
+
+                Console.Write($"\r[{bar}] {percent}% - {mensagem}");
+
+                if (current == total)
+                    Console.WriteLine();
+            }
+        }
     }
 }
 
