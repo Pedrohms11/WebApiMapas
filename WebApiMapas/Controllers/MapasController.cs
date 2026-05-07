@@ -67,24 +67,36 @@ namespace WebApiMapas.Controllers
         /// POST: api/Mapas - Recebe e valida as coordenadas antes de salvar.
         /// </summary>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
             if (novaLocalizacao == null) 
-                return BadRequest("Corpo vazio.");
+                return BadRequest(new 
+                { erro = "Requisição inválida", 
+                    detalhe = "O corpo do JSON não pode estar vazio." });
+
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
-                return BadRequest("O campo 'logradouro' é obrigatório.");
+                return BadRequest(new 
+                { erro = "Campo obrigatório",
+                    detalhe = "O logradouro deve ser preenchido." });
 
             // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         
             if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
             {
-                return BadRequest("Latitude inválida. O valor deve estar entre -90 e 90 graus.");
+                return BadRequest(new 
+                { erro = "Coordenada inválida", 
+                    detalhe = "A latitude deve estar entre -90 e 90 graus." });
             }
 
             // Validação geográfica: A longitude deve estar entre -180 (Oeste) e 180 (Leste).
             if (novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
             {
-                return BadRequest("Longitude inválida. O valor deve estar entre -180 e 180 graus.");
+                return BadRequest(new 
+                { erro = "Coordenada inválida", 
+                    detalhe = "A longitude deve estar entre -180 e 180 graus." });
             }
             try
             {
