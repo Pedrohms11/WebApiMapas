@@ -45,6 +45,7 @@ namespace WebApiMapas.Controllers
         /// <remarks>
         /// GET: api/Mapas - Retorna uma lista de todas as localizações cadastradas.
         /// </remarks>
+        /// 
         /// <returns></returns>
         /// <response code="200">Lista de localizações obtida com sucesso</response>
         /// <response code="500">Erro interno do servidor ao tentar listar as localizações</response>
@@ -66,8 +67,13 @@ namespace WebApiMapas.Controllers
 
 
         /// <summary>
-        /// 
+        /// GET: api/Mapas/{id} - Retorna os detalhes de uma localização específica com base no ID fornecido.
         /// </summary>
+        /// 
+        /// <remarks>
+        /// GET: api/Mapas/{id} - Retorna os detalhes de uma localização específica com base no ID fornecido.
+        /// </remarks>
+        /// 
         /// <param name="id"></param>
         /// <returns></returns>
         /// <response code="200">Sala encontrada</response>

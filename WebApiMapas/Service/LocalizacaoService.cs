@@ -1,4 +1,5 @@
 ﻿using Google.Cloud.Firestore;
+using WebApiMapas.Data;
 using WebApiMapas.Models;
 using WebApiMapas.Repositories.Interfaces;
 
@@ -25,9 +26,13 @@ namespace WebApiMapas.Service
             _repo = repo;
         }
 
+        /// <summary>
+        /// Listar todas as localizações - Chama o método Listar do repository
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<Localizacao>> Listar()
         {
-            // Referência da coleção
+            // Referência para a coleção no Firestore
             CollectionReference collectionRef = _firestoreDb.Collection("Localizacoes");
 
             // Busca todos os documentos da coleção
@@ -51,17 +56,22 @@ namespace WebApiMapas.Service
             return lista;
         }
 
+        /// <summary>
+        /// Listar uma localização por ID - Chama o método ObterPorId do repository
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<Localizacao> ObterPorId(string id)
         {
             // Referência para a coleção no Firestore
             DocumentReference docRef = _firestoreDb.Collection("Localizacoes").Document(id);
 
-            // Busca o snapshot do documento de forma assíncrona
+            // Busca os dados do documento de forma assíncrona
             DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
             if (snapshot.Exists)
             {
-                // Converte o documento para o seu modelo de classe C#
+                // Converte o documento para o modelo Localizacao
                 var localizacao = snapshot.ConvertTo<Localizacao>();
                 return localizacao;
             }
