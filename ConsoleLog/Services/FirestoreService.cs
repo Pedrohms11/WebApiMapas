@@ -1,7 +1,10 @@
 ﻿using ConsoleLog.Models;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Configuration;
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ConsoleLog.Services
 {
@@ -72,13 +75,14 @@ namespace ConsoleLog.Services
         }
 
         /// <summary>
+        /// <summary>
         /// Busca localização por ID no Firestore
         /// </summary>
-        public async Task<Localizacao?> BuscarLocalizacaoPorId(int id)
+        public async Task<Localizacao?> BuscarLocalizacaoPorId(string id)  // Alterado para string
         {
             try
             {
-                DocumentReference docRef = _db.Collection(_colecaoName).Document(id.ToString());
+                DocumentReference docRef = _db.Collection(_colecaoName).Document(id);
                 DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
                 if (snapshot.Exists)
@@ -94,6 +98,26 @@ namespace ConsoleLog.Services
             {
                 _logger.LogError($"Erro ao buscar localização {id} no Firestore", ex, "FIRESTORE");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Remove localização do Firestore (se necessário)
+        /// </summary>
+        public async Task<bool> RemoverLocalizacaoFirebase(string id)  // Alterado para string
+        {
+            try
+            {
+                DocumentReference docRef = _db.Collection(_colecaoName).Document(id);
+                await docRef.DeleteAsync();
+
+                _logger.LogInfo($"Localização {id} removida do Firestore", "FIRESTORE");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao remover do Firestore: {ex.Message}", ex, "FIRESTORE");
+                return false;
             }
         }
 
@@ -187,7 +211,6 @@ namespace ConsoleLog.Services
             }
         }
 
-        
         /// <summary>
         /// Verifica se a conexão com Firestore está ativa
         /// </summary>
@@ -205,124 +228,111 @@ namespace ConsoleLog.Services
                 return false;
             }
         }
+
         /// <summary>
-/// Converte documento Firestore para objeto Localizacao (versão com Dictionary)
-/// </summary>
-private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
-{
-    try
-    {
-        if (!document.Exists)
-            return null;
-
-        var dados = document.ToDictionary();
-        var localizacao = new Localizacao();
-        
-        // 1. ID - vem do DocumentId
-        if (!int.TryParse(document.Id, out int id))
-        {
-            _logger.LogWarning($"ID inválido: {document.Id}", "FIRESTORE");
-            return null;
-        }
-        localizacao.Id = id;
-
-        // 2. Logradouro
-        localizacao.Logradouro = dados.ContainsKey("Logradouro") 
-            ? dados["Logradouro"]?.ToString() ?? string.Empty 
-            : string.Empty;
-
-        // 3. Numero
-        localizacao.Numero = dados.ContainsKey("Numero") 
-            ? dados["Numero"]?.ToString() ?? string.Empty 
-            : string.Empty;
-
-        // 4. Bairro
-        localizacao.Bairro = dados.ContainsKey("Bairro") 
-            ? dados["Bairro"]?.ToString() ?? string.Empty 
-            : string.Empty;
-
-        // 5. CEP - TRATAMENTO ESPECIAL para número
-        if (dados.ContainsKey("Cep"))
-        {
-            var cepObj = dados["Cep"];
-            if (cepObj is string cepStr)
-            {
-                localizacao.Cep = cepStr;
-            }
-            else if (cepObj is long cepLong)
-            {
-                localizacao.Cep = cepLong.ToString("D8"); // Formata como 8 dígitos
-            }
-            else if (cepObj is int cepInt)
-            {
-                localizacao.Cep = cepInt.ToString("D8");
-            }
-            else if (cepObj != null)
-            {
-                localizacao.Cep = cepObj.ToString() ?? string.Empty;
-            }
-            else
-            {
-                localizacao.Cep = string.Empty;
-            }
-        }
-        else
-        {
-            localizacao.Cep = string.Empty;
-        }
-
-        // 6. Latitude
-        if (dados.ContainsKey("Latitude"))
+        /// Converte documento Firestore para objeto Localizacao (versão com Dictionary)
+        /// </summary>
+        /// <summary>
+        /// Converte documento Firestore para objeto Localizacao
+        /// </summary>
+        private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
         {
             try
             {
-                localizacao.Latitude = Convert.ToDouble(dados["Latitude"]);
-            }
-            catch
-            {
-                localizacao.Latitude = 0;
-            }
-        }
-        else
-        {
-            localizacao.Latitude = 0;
-        }
+                if (!document.Exists)
+                    return null;
 
-        // 7. Longitude
-        if (dados.ContainsKey("Longitude"))
-        {
-            try
-            {
-                localizacao.Longitude = Convert.ToDouble(dados["Longitude"]);
-            }
-            catch
-            {
-                localizacao.Longitude = 0;
-            }
-        }
-        else
-        {
-            localizacao.Longitude = 0;
-        }
+                var dados = document.ToDictionary();
+                var localizacao = new Localizacao();
 
-        // 8. Timestamp
-        if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
-        {
-            localizacao.Timestamp = ts.ToDateTime();
-        }
-        else
-        {
-            localizacao.Timestamp = DateTime.UtcNow;
-        }
+                // 1. ID - vem do DocumentId (como string diretamente)
+                localizacao.Id = document.Id;  // ✅ Agora está correto - string para string
 
-        return localizacao;
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
-        return null;
-    }
-}
+                // 2. Logradouro
+                localizacao.Logradouro = dados.ContainsKey("Logradouro") && dados["Logradouro"] != null
+                    ? dados["Logradouro"].ToString() ?? string.Empty
+                    : string.Empty;
+
+                // 3. Numero
+                localizacao.Numero = dados.ContainsKey("Numero") && dados["Numero"] != null
+                    ? dados["Numero"].ToString() ?? string.Empty
+                    : string.Empty;
+
+                // 4. Bairro
+                localizacao.Bairro = dados.ContainsKey("Bairro") && dados["Bairro"] != null
+                    ? dados["Bairro"].ToString() ?? string.Empty
+                    : string.Empty;
+
+                // 5. CEP - TRATAMENTO ESPECIAL para número
+                if (dados.ContainsKey("Cep") && dados["Cep"] != null)
+                {
+                    var cepObj = dados["Cep"];
+                    localizacao.Cep = cepObj switch
+                    {
+                        string cepStr => cepStr,
+                        long cepLong => cepLong.ToString("D8"),
+                        int cepInt => cepInt.ToString("D8"),
+                        double cepDouble => ((long)cepDouble).ToString("D8"),
+                        _ => cepObj.ToString() ?? string.Empty
+                    };
+                }
+                else
+                {
+                    localizacao.Cep = string.Empty;
+                }
+
+                // 6. Latitude
+                if (dados.ContainsKey("Latitude") && dados["Latitude"] != null)
+                {
+                    try
+                    {
+                        localizacao.Latitude = Convert.ToDouble(dados["Latitude"]);
+                    }
+                    catch
+                    {
+                        localizacao.Latitude = 0;
+                    }
+                }
+                else
+                {
+                    localizacao.Latitude = 0;
+                }
+
+                // 7. Longitude
+                if (dados.ContainsKey("Longitude") && dados["Longitude"] != null)
+                {
+                    try
+                    {
+                        localizacao.Longitude = Convert.ToDouble(dados["Longitude"]);
+                    }
+                    catch
+                    {
+                        localizacao.Longitude = 0;
+                    }
+                }
+                else
+                {
+                    localizacao.Longitude = 0;
+                }
+
+                // 8. Timestamp
+                if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
+                {
+                    localizacao.Timestamp = ts.ToDateTime();
+                }
+                else
+                {
+                    localizacao.Timestamp = DateTime.UtcNow;
+                }
+
+                return localizacao;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao converter documento Firestore: {ex.Message}", ex, "FIRESTORE");
+                return null;
+            }
+        }
 
         /// <summary>
         /// Obtém estatísticas do Firestore
@@ -359,5 +369,4 @@ private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document
         public int BairrosUnicos { get; set; }
         public int CepsUnicos { get; set; }
     }
-
 }

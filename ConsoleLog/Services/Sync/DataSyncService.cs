@@ -1,5 +1,7 @@
-﻿using ConsoleLog.Data;
+﻿using Microsoft.EntityFrameworkCore;
 using ConsoleLog.Models;
+using ConsoleLog.Data;
+using ConsoleLog.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +11,6 @@ using System.Threading.Tasks;
 
 namespace ConsoleLog.Services.Sync
 {
-
     /// <summary>
     /// Serviço de sincronização entre Firestore e SQLite Local
     /// </summary>
@@ -48,10 +49,11 @@ namespace ConsoleLog.Services.Sync
                     return result;
                 }
 
-                // 2. Buscar dados existentes no SQLite
-                var localData = await _context.Localizacoes.ToDictionaryAsync(l => l.Id);
+                // 2. Buscar dados existentes no SQLite - CORRIGIDO: Especificar os tipos explicitamente
+                var localData = await _context.Localizacoes
+                    .ToDictionaryAsync<Localizacao, string>(l => l.Id);  // ✅ Tipos explícitos
 
-                // 3. Calcular hashes dos dados do Firestore para comparar
+                // 3. Calcular hashes dos dados do Firestore - CORRIGIDO
                 var firestoreDataComHash = firestoreData.Select(f =>
                 {
                     f.DataHash = CalcularHash(f);
@@ -101,10 +103,6 @@ namespace ConsoleLog.Services.Sync
 
                     // Remover do dicionário local os que foram processados
                     localData.Remove(firestoreItem.Id);
-
-                    // Log de progresso
-                    var totalProcessados = registrosNovos + registrosAtualizados;
-                    _logger.LogProgress(totalProcessados, firestoreData.Count, $"Sincronizando...");
                 }
 
                 // 5. Registros que existem no SQLite mas não no Firestore (foram removidos)
@@ -122,7 +120,7 @@ namespace ConsoleLog.Services.Sync
                 result.NovosRegistros = registrosNovos;
                 result.RegistrosAtualizados = registrosAtualizados;
                 result.RegistrosRemovidos = registrosRemovidos;
-                result.DestinoCount = await _context.Localizacoes.CountAsync();
+                result.DestinoCount = await _context.Localizacoes.CountAsync();  // ✅ Sem tipos explícitos
                 result.Mensagem = $"Sincronização concluída! +{registrosNovos} ~{registrosAtualizados} -{registrosRemovidos}";
 
                 _logger.LogSuccess(result.Mensagem, "SYNC");
@@ -153,7 +151,7 @@ namespace ConsoleLog.Services.Sync
         }
 
         /// <summary>
-        /// Limpa dados antigos do SQLite (opcional)
+        /// Limpa dados antigos do SQLite
         /// </summary>
         public async Task<int> LimparDadosAntigos(int diasManter = 30)
         {
@@ -162,7 +160,7 @@ namespace ConsoleLog.Services.Sync
                 var dataCorte = DateTime.UtcNow.AddDays(-diasManter);
                 var registrosAntigos = await _context.Localizacoes
                     .Where(l => l.Timestamp < dataCorte)
-                    .ToListAsync();
+                    .ToListAsync();  // ✅ Sem tipos explícitos
 
                 if (registrosAntigos.Any())
                 {
@@ -196,7 +194,4 @@ namespace ConsoleLog.Services.Sync
         public int RegistrosRemovidos { get; set; }
         public string Mensagem { get; set; } = string.Empty;
     }
-
 }
-    
-

@@ -1,38 +1,30 @@
-﻿using ConsoleLog.Models;
-using Microsoft.EntityFrameworkCore;
-
+﻿using Microsoft.EntityFrameworkCore;
+using ConsoleLog.Models;
 
 namespace ConsoleLog.Data
 {
-    /// <summary>
-    /// Contexto do banco de dados SQLite (Camada Data)
-    /// </summary>
     public class AppDbContext : DbContext
     {
         private readonly string _connectionString;
 
+        // Construtor com validação de null
         public AppDbContext(string connectionString)
         {
+            // ✅ Adicionar validação para evitar null
+            if (string.IsNullOrEmpty(connectionString))
+                throw new ArgumentNullException(nameof(connectionString), "Connection string não pode ser nula ou vazia");
+
             _connectionString = connectionString;
         }
 
-        /// <summary>
-        /// Tabela de Localizações
-        /// </summary>
         public DbSet<Localizacao> Localizacoes { get; set; }
 
-        /// <summary>
-        /// Configuração do banco de dados SQLite
-        /// </summary>
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite(_connectionString);
             optionsBuilder.EnableSensitiveDataLogging(false);
         }
 
-        /// <summary>
-        /// Configuração do modelo de dados
-        /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -47,24 +39,18 @@ namespace ConsoleLog.Data
                 entity.Property(e => e.Latitude).IsRequired();
                 entity.Property(e => e.Longitude).IsRequired();
                 entity.Property(e => e.Timestamp).IsRequired();
+                entity.Property(e => e.DataHash).HasMaxLength(64);
+                entity.Property(e => e.LastSyncAt);
 
-                // Índices para melhor performance
                 entity.HasIndex(e => e.Cep).HasDatabaseName("IX_Localizacoes_Cep");
                 entity.HasIndex(e => e.Timestamp).HasDatabaseName("IX_Localizacoes_Timestamp");
+                entity.HasIndex(e => e.LastSyncAt).HasDatabaseName("IX_Localizacoes_LastSyncAt");
             });
         }
 
-        /// <summary>
-        /// Aplica migrações automaticamente
-        /// </summary>
         public void ApplyMigrations()
         {
             Database.Migrate();
         }
-
-
-
-
     }
 }
-

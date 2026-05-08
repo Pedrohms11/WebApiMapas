@@ -3,8 +3,12 @@ using ConsoleLog.Services;
 using ConsoleLog.Services.Sync;
 using ConsoleLog.View;
 using ConsoleLog.ViewModel;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace ConsoleLog
 {
@@ -15,40 +19,35 @@ namespace ConsoleLog
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.Title = "Sistema de Localizações - READ ONLY";
 
-            Console.WriteLine(@"
-╔═══════════════════════════════════════════════════════════════════╗
-║     SISTEMA DE CONSULTA DE LOCALIZAÇÕES - READ ONLY MODE          ║
-║                    Firebase Firestore + SQLite                    ║
-╚═══════════════════════════════════════════════════════════════════╝
-");
-
             // Configuração
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            // Configurar DI (Dependency Injection)
+            // Configurar DI
             var services = new ServiceCollection();
             services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton<LogService>();
 
-            // Configurar SQLite
+            // ✅ Garantir que connectionString não é nula
             var connectionString = configuration["Database:SqliteConnectionString"];
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                Console.WriteLine("ERRO: Connection string do SQLite não configurada no appsettings.json");
+                Console.WriteLine("Pressione qualquer tecla para sair...");
+                Console.ReadKey();
+                return;
+            }
+
             var dbContext = new AppDbContext(connectionString);
-            dbContext.ApplyMigrations(); // Migração automática
+            dbContext.ApplyMigrations();
             services.AddSingleton(dbContext);
 
-            // Configurar Firestore (APENAS LEITURA)
+            // Configurar Firestore
             services.AddSingleton<FirestoreService>();
-
-            // Configurar Serviço de Sincronização
             services.AddSingleton<DataSyncService>();
-
-            // Configurar ViewModel
             services.AddSingleton<LocalizacaoViewModel>();
-
-            // Configurar View
             services.AddSingleton<LocalizacaoView>();
 
             var serviceProvider = services.BuildServiceProvider();
@@ -66,7 +65,6 @@ namespace ConsoleLog
                 return;
             }
 
-            // Executar a aplicação
             var view = serviceProvider.GetRequiredService<LocalizacaoView>();
             await view.RunAsync();
         }
