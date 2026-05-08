@@ -3,11 +3,6 @@ using ConsoleLog.Models;
 using ConsoleLog.Services;
 using ConsoleLog.Services.Sync;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConsoleLog.ViewModel
 {
@@ -189,21 +184,20 @@ namespace ConsoleLog.ViewModel
                 return new LocalStats();
             }
         }
-
         /// <summary>
         /// Obtém estatísticas do Firestore (online)
         /// </summary>
-        public async Task<FirestoreStats> ObterEstatisticasFirestore()
+        public async Task<FirestoreStats> ObterEstatisticasFirestore()  // ✅ Nome correto: Obter (não Ober)
         {
             try
             {
-                return await _firestoreService.ObterEstatisticas();
+                return await _firestoreService.ObterEstatisticas();  // ✅ Chama o método correto
             }
             catch (Exception ex)
             {
                 _logger.LogError("Erro ao obter estatísticas do Firestore", ex, "VIEWMODEL");
                 OnErrorOccurred?.Invoke(this, ex);
-                return new FirestoreStats();
+                return new FirestoreStats();  // ✅ Retorna um objeto vazio em caso de erro
             }
         }
 

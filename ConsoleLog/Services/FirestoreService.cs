@@ -1,16 +1,10 @@
-﻿using ConsoleLog.Models;
-using Google.Cloud.Firestore;
+﻿using Google.Cloud.Firestore;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using ConsoleLog.Models;
+
 
 namespace ConsoleLog.Services
 {
-    /// <summary>
-    /// Serviço de integração com Firebase Cloud Firestore - APENAS LEITURA
-    /// </summary>
     public class FirestoreService
     {
         private readonly FirestoreDb _db;
@@ -32,15 +26,55 @@ namespace ConsoleLog.Services
                 if (string.IsNullOrEmpty(keyPath))
                     throw new Exception("KeyFilePath não configurado no appsettings.json");
 
-                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", keyPath);
-                _db = FirestoreDb.Create(projectId);
+                // Resolver caminho completo
+                string resolvedKeyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, keyPath);
 
-                _logger.LogInfo($"Firestore conectado com sucesso - Projeto: {projectId}", "FIRESTORE");
+                _logger.LogInfo($"ProjectId: {projectId}", "FIRESTORE");
+                _logger.LogInfo($"Arquivo de credencial: {resolvedKeyPath}", "FIRESTORE");
+
+                // Verificar se o arquivo existe
+                if (!File.Exists(resolvedKeyPath))
+                {
+                    throw new FileNotFoundException($"Arquivo de credencial não encontrado: {resolvedKeyPath}");
+                }
+
+                // ✅ LER O CONTEÚDO DO ARQUIVO JSON
+                var jsonCredentials = File.ReadAllText(resolvedKeyPath);
+
+                // ✅ CRIAR O CLIENTE USANDO O JSON DIRETAMENTE (Método mais confiável)
+                var builder = new FirestoreDbBuilder
+                {
+                    ProjectId = projectId,
+                    JsonCredentials = jsonCredentials
+                };
+
+                _db = builder.Build();
+
+                _logger.LogSuccess($"Firestore conectado com sucesso - Projeto: {projectId}", "FIRESTORE");
             }
             catch (Exception ex)
             {
                 _logger.LogError("Erro ao conectar ao Firestore", ex, "FIRESTORE");
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Verifica se a conexão com Firestore está ativa
+        /// </summary>
+        public async Task<bool> VerificarConexao()
+        {
+            try
+            {
+                // Tenta listar a primeira coleção para testar a conexão
+                var collections = await _db.ListRootCollectionsAsync().Take(1).ToListAsync();
+                _logger.LogSuccess("Conexão com Firestore verificada com sucesso", "FIRESTORE");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Falha na conexão com Firestore", ex, "FIRESTORE");
+                return false;
             }
         }
 
@@ -75,164 +109,6 @@ namespace ConsoleLog.Services
         }
 
         /// <summary>
-        /// <summary>
-        /// Busca localização por ID no Firestore
-        /// </summary>
-        public async Task<Localizacao?> BuscarLocalizacaoPorId(string id)  // Alterado para string
-        {
-            try
-            {
-                DocumentReference docRef = _db.Collection(_colecaoName).Document(id);
-                DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
-
-                if (snapshot.Exists)
-                {
-                    _logger.LogInfo($"Localização {id} encontrada no Firestore", "FIRESTORE");
-                    return ConverterDocumentoParaLocalizacao(snapshot);
-                }
-
-                _logger.LogWarning($"Localização {id} não encontrada no Firestore", "FIRESTORE");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao buscar localização {id} no Firestore", ex, "FIRESTORE");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Remove localização do Firestore (se necessário)
-        /// </summary>
-        public async Task<bool> RemoverLocalizacaoFirebase(string id)  // Alterado para string
-        {
-            try
-            {
-                DocumentReference docRef = _db.Collection(_colecaoName).Document(id);
-                await docRef.DeleteAsync();
-
-                _logger.LogInfo($"Localização {id} removida do Firestore", "FIRESTORE");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao remover do Firestore: {ex.Message}", ex, "FIRESTORE");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Busca localizações por CEP no Firestore
-        /// </summary>
-        public async Task<List<Localizacao>> BuscarLocalizacoesPorCep(string cep)
-        {
-            try
-            {
-                Query query = _db.Collection(_colecaoName).WhereEqualTo("Cep", cep);
-                QuerySnapshot snapshot = await query.GetSnapshotAsync();
-
-                var localizacoes = new List<Localizacao>();
-                foreach (var document in snapshot.Documents)
-                {
-                    var localizacao = ConverterDocumentoParaLocalizacao(document);
-                    if (localizacao != null)
-                        localizacoes.Add(localizacao);
-                }
-
-                _logger.LogInfo($"Buscadas {localizacoes.Count} localizações com CEP {cep}", "FIRESTORE");
-                return localizacoes;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao buscar localizações por CEP {cep} no Firestore", ex, "FIRESTORE");
-                return new List<Localizacao>();
-            }
-        }
-
-        /// <summary>
-        /// Busca localizações por bairro no Firestore
-        /// </summary>
-        public async Task<List<Localizacao>> BuscarLocalizacoesPorBairro(string bairro)
-        {
-            try
-            {
-                Query query = _db.Collection(_colecaoName).WhereEqualTo("Bairro", bairro);
-                QuerySnapshot snapshot = await query.GetSnapshotAsync();
-
-                var localizacoes = new List<Localizacao>();
-                foreach (var document in snapshot.Documents)
-                {
-                    var localizacao = ConverterDocumentoParaLocalizacao(document);
-                    if (localizacao != null)
-                        localizacoes.Add(localizacao);
-                }
-
-                _logger.LogInfo($"Buscadas {localizacoes.Count} localizações no bairro {bairro}", "FIRESTORE");
-                return localizacoes;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao buscar localizações por bairro {bairro}", ex, "FIRESTORE");
-                return new List<Localizacao>();
-            }
-        }
-
-        /// <summary>
-        /// Busca localizações por período no Firestore
-        /// </summary>
-        public async Task<List<Localizacao>> BuscarLocalizacoesPorPeriodo(DateTime dataInicio, DateTime dataFim)
-        {
-            try
-            {
-                var startTimestamp = Timestamp.FromDateTime(dataInicio.ToUniversalTime());
-                var endTimestamp = Timestamp.FromDateTime(dataFim.ToUniversalTime());
-
-                Query query = _db.Collection(_colecaoName)
-                    .WhereGreaterThanOrEqualTo("Timestamp", startTimestamp)
-                    .WhereLessThanOrEqualTo("Timestamp", endTimestamp);
-
-                QuerySnapshot snapshot = await query.GetSnapshotAsync();
-
-                var localizacoes = new List<Localizacao>();
-                foreach (var document in snapshot.Documents)
-                {
-                    var localizacao = ConverterDocumentoParaLocalizacao(document);
-                    if (localizacao != null)
-                        localizacoes.Add(localizacao);
-                }
-
-                _logger.LogInfo($"Buscadas {localizacoes.Count} localizações no período", "FIRESTORE");
-                return localizacoes;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao buscar localizações por período", ex, "FIRESTORE");
-                return new List<Localizacao>();
-            }
-        }
-
-        /// <summary>
-        /// Verifica se a conexão com Firestore está ativa
-        /// </summary>
-        public async Task<bool> VerificarConexao()
-        {
-            try
-            {
-                var collections = await _db.ListRootCollectionsAsync().FirstOrDefaultAsync();
-                _logger.LogSuccess("Conexão com Firestore verificada com sucesso", "FIRESTORE");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Falha na conexão com Firestore", ex, "FIRESTORE");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Converte documento Firestore para objeto Localizacao (versão com Dictionary)
-        /// </summary>
-        /// <summary>
         /// Converte documento Firestore para objeto Localizacao
         /// </summary>
         private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot document)
@@ -245,25 +121,25 @@ namespace ConsoleLog.Services
                 var dados = document.ToDictionary();
                 var localizacao = new Localizacao();
 
-                // 1. ID - vem do DocumentId (como string diretamente)
-                localizacao.Id = document.Id;  // ✅ Agora está correto - string para string
+                // ID - vem do DocumentId
+                localizacao.Id = document.Id;
 
-                // 2. Logradouro
+                // Logradouro
                 localizacao.Logradouro = dados.ContainsKey("Logradouro") && dados["Logradouro"] != null
                     ? dados["Logradouro"].ToString() ?? string.Empty
                     : string.Empty;
 
-                // 3. Numero
+                // Numero
                 localizacao.Numero = dados.ContainsKey("Numero") && dados["Numero"] != null
                     ? dados["Numero"].ToString() ?? string.Empty
                     : string.Empty;
 
-                // 4. Bairro
+                // Bairro
                 localizacao.Bairro = dados.ContainsKey("Bairro") && dados["Bairro"] != null
                     ? dados["Bairro"].ToString() ?? string.Empty
                     : string.Empty;
 
-                // 5. CEP - TRATAMENTO ESPECIAL para número
+                // CEP
                 if (dados.ContainsKey("Cep") && dados["Cep"] != null)
                 {
                     var cepObj = dados["Cep"];
@@ -272,7 +148,6 @@ namespace ConsoleLog.Services
                         string cepStr => cepStr,
                         long cepLong => cepLong.ToString("D8"),
                         int cepInt => cepInt.ToString("D8"),
-                        double cepDouble => ((long)cepDouble).ToString("D8"),
                         _ => cepObj.ToString() ?? string.Empty
                     };
                 }
@@ -281,7 +156,7 @@ namespace ConsoleLog.Services
                     localizacao.Cep = string.Empty;
                 }
 
-                // 6. Latitude
+                // Latitude
                 if (dados.ContainsKey("Latitude") && dados["Latitude"] != null)
                 {
                     try
@@ -293,12 +168,8 @@ namespace ConsoleLog.Services
                         localizacao.Latitude = 0;
                     }
                 }
-                else
-                {
-                    localizacao.Latitude = 0;
-                }
 
-                // 7. Longitude
+                // Longitude
                 if (dados.ContainsKey("Longitude") && dados["Longitude"] != null)
                 {
                     try
@@ -310,12 +181,8 @@ namespace ConsoleLog.Services
                         localizacao.Longitude = 0;
                     }
                 }
-                else
-                {
-                    localizacao.Longitude = 0;
-                }
 
-                // 8. Timestamp
+                // Timestamp
                 if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
                 {
                     localizacao.Timestamp = ts.ToDateTime();
@@ -333,7 +200,6 @@ namespace ConsoleLog.Services
                 return null;
             }
         }
-
         /// <summary>
         /// Obtém estatísticas do Firestore
         /// </summary>
@@ -358,7 +224,6 @@ namespace ConsoleLog.Services
             }
         }
     }
-
     /// <summary>
     /// Estatísticas do Firestore
     /// </summary>
