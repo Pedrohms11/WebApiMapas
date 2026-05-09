@@ -70,7 +70,7 @@ namespace WebApiMapas.Controllers
                 if (localizacao == null)
                     return NotFound(new { mensagem = $"ID {id} não encontrado." });
 
-                return Ok(new { mensagem = $"Localização encontrada: {localizacao}" });
+                return Ok(new { mensagem = "Localização encontrada: ", localizacao });
             }
             catch (Exception ex)
             {
@@ -101,7 +101,7 @@ namespace WebApiMapas.Controllers
                 if (localizacao == null)
                     return NotFound(new { mensagem = $"Logradouro {logradouro} não encontrado." });
 
-                return Ok(new { mensagem = $"Logradouro encontrado: {localizacao}" });
+                return Ok(new { mensagem = "Logradouro encontrado: ", localizacao });
             }
             catch (Exception ex)
             {
