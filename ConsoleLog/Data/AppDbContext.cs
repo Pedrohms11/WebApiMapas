@@ -5,35 +5,20 @@ namespace ConsoleLog.Data
 {
     public class AppDbContext : DbContext
     {
-        // Construtor sem parâmetros para o EF Tools (design time)
-        public AppDbContext()
-        {
-        }
+        private readonly string _connectionString;
 
-        // Construtor com parâmetros para sua aplicação (runtime)
         public AppDbContext(string connectionString)
         {
             _connectionString = connectionString;
         }
 
-        private string? _connectionString;
-
         public DbSet<Localizacao> Localizacoes { get; set; }
+        public DbSet<Auditoria> Auditoria { get; set; } // NOVO
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            // Se uma connection string foi fornecida (runtime), usa ela
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                optionsBuilder.UseSqlite(_connectionString);
-            }
-            // Se não (design time), usa uma connection string padrão para migrações
-            else
-            {
-                optionsBuilder.UseSqlite("Data Source=localizacao.db");
-            }
-
-            optionsBuilder.EnableSensitiveDataLogging(false);
+            optionsBuilder.UseSqlite(_connectionString);
+            optionsBuilder.EnableSensitiveDataLogging(true);
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -50,12 +35,32 @@ namespace ConsoleLog.Data
                 entity.Property(e => e.Latitude).IsRequired();
                 entity.Property(e => e.Longitude).IsRequired();
                 entity.Property(e => e.Timestamp).IsRequired();
-                entity.Property(e => e.DataHash).HasMaxLength(64);
-                entity.Property(e => e.LastSyncAt);
+            });
 
-                entity.HasIndex(e => e.Cep).HasDatabaseName("IX_Localizacoes_Cep");
-                entity.HasIndex(e => e.Timestamp).HasDatabaseName("IX_Localizacoes_Timestamp");
-                entity.HasIndex(e => e.LastSyncAt).HasDatabaseName("IX_Localizacoes_LastSyncAt");
+            // Configuração da tabela de Auditoria
+            modelBuilder.Entity<Auditoria>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Tabela).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.RegistroId).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Acao).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.DadosAntigos).IsRequired();
+                entity.Property(e => e.DadosNovos).IsRequired();
+                entity.Property(e => e.Usuario).HasMaxLength(100);
+                entity.Property(e => e.EmailUsuario).HasMaxLength(100);
+                entity.Property(e => e.PerfilUsuario).HasMaxLength(50);
+                entity.Property(e => e.Maquina).HasMaxLength(100);
+                entity.Property(e => e.IpAddress).HasMaxLength(50);
+                entity.Property(e => e.Detalhes).HasMaxLength(500);
+                entity.Property(e => e.Origem).HasMaxLength(50);
+
+                entity.HasIndex(e => e.Tabela);
+                entity.HasIndex(e => e.RegistroId);
+                entity.HasIndex(e => e.Acao);
+                entity.HasIndex(e => e.DataHora);
+                entity.HasIndex(e => e.Usuario);
+                entity.HasIndex(e => e.EmailUsuario);
+                entity.HasIndex(e => e.Origem);
             });
         }
 
