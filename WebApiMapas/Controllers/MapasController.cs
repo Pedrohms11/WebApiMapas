@@ -56,16 +56,23 @@ namespace WebApiMapas.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         /// <response code="200">Localização encontrada com sucesso.</response>
+        /// <response code="400">ID inválido ou campo vazio.</response>
         /// <response code="404">ID não encontrado.</response>
         /// <response code="500">Erro ao buscar localização por ID.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetById(string id)
+        public async Task<IActionResult> GetById(string? id)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    return BadRequest(new { mensagem = "ID inválido ou campo vazio" });
+                }
+
                 var localizacao = await _service.ObterPorId(id);
                 if (localizacao == null)
                     return NotFound(new { mensagem = $"ID {id} não encontrado." });
@@ -87,14 +94,21 @@ namespace WebApiMapas.Controllers
         /// <param name="logradouro"></param>
         /// <returns></returns>
         /// <response code="200">Localização encontrada com sucesso.</response>
+        /// <response code="400">Logradouro inválido ou campo vazio.</response>
         /// <response code="404">Logradouro não encontrado.</response>
         /// <response code="500">Erro ao buscar localização por logradouro.</response>
         [HttpGet("logradouro/{logradouro}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetByLogradouro(string logradouro)
+        public async Task<IActionResult> GetByLogradouro(string? logradouro)
         {
+            if (string.IsNullOrWhiteSpace(logradouro))
+            {
+                return BadRequest(new { mensagem = "Forneça um nome de logradouro" });
+            }
+
             try
             {
                 var localizacao = await _service.ObterPorLogradouro(logradouro);
@@ -231,11 +245,12 @@ namespace WebApiMapas.Controllers
         {
             if (atualizadaLocalizacao == null)
                 return BadRequest(new { erro = "Requisição inválida", detalhe = "O corpo do JSON não pode estar vazio." });
+
             try
             {
                 var existente = await _service.ObterPorId(id);
 
-                if (existente == null) 
+                if (existente == null)
                     return NotFound(new { mensagem = $"ID {id} não encontrado." });
 
                 // Atualiza os campos necessários
@@ -347,6 +362,5 @@ namespace WebApiMapas.Controllers
                 return StatusCode(500, new { erro = $"Erro ao deletar em lote: {ex.Message}" });
             }
         }
-
     }
 }
