@@ -3,11 +3,13 @@ using ConsoleLog.Services;
 using ConsoleLog.Services.Sync;
 using ConsoleLog.View;
 using ConsoleLog.ViewModel;
-
+using ConsoleLog.ViewModel;
+using ConsoleLog.View;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ConsoleLog
@@ -17,7 +19,18 @@ namespace ConsoleLog
         static async Task Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.Title = "Sistema de Localizações - READ ONLY";
+            Console.Title = "Sistema de Monitoramento Firebase - Auditoria em Tempo Real";
+
+            Console.Clear();
+            Console.WriteLine(@"
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SISTEMA DE MONITORAMENTO FIREBASE                         ║
+║                         AUDITORIA EM TEMPO REAL                              ║
+║                                                                              ║
+║  Este sistema monitora TODAS as alterações no Firebase Firestore            ║
+║  e registra localmente QUEM e QUANDO realizou cada ação                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+");
 
             // Configuração
             var configuration = new ConfigurationBuilder()
@@ -30,12 +43,11 @@ namespace ConsoleLog
             services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton<LogService>();
 
-            // ✅ Garantir que connectionString não é nula
+            // Configurar SQLite
             var connectionString = configuration["Database:SqliteConnectionString"];
             if (string.IsNullOrEmpty(connectionString))
             {
-                Console.WriteLine("ERRO: Connection string do SQLite não configurada no appsettings.json");
-                Console.WriteLine("Pressione qualquer tecla para sair...");
+                Console.WriteLine("ERRO: Connection string do SQLite não configurada");
                 Console.ReadKey();
                 return;
             }
@@ -44,8 +56,10 @@ namespace ConsoleLog
             dbContext.ApplyMigrations();
             services.AddSingleton(dbContext);
 
-            // Configurar Firestore
+            // Configurar serviços
             services.AddSingleton<FirestoreService>();
+            services.AddSingleton<AuditoriaService>();
+            services.AddSingleton<RealtimeMonitorService>();
             services.AddSingleton<DataSyncService>();
             services.AddSingleton<LocalizacaoViewModel>();
             services.AddSingleton<LocalizacaoView>();
@@ -65,6 +79,17 @@ namespace ConsoleLog
                 return;
             }
 
+            // Iniciar monitoramento em tempo real
+            Console.WriteLine("\n🔄 Iniciando monitoramento em tempo real...");
+            var monitorService = serviceProvider.GetRequiredService<RealtimeMonitorService>();
+            await monitorService.IniciarMonitoramento();
+
+            Console.WriteLine("\n✅ Sistema de auditoria ativo!");
+            Console.WriteLine("📝 Todas as alterações no Firebase serão registradas localmente.");
+            Console.WriteLine("🔍 Pressione qualquer tecla para continuar...");
+            Console.ReadKey();
+
+            // Executar a aplicação
             var view = serviceProvider.GetRequiredService<LocalizacaoView>();
             await view.RunAsync();
         }

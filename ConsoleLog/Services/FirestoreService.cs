@@ -14,7 +14,7 @@ namespace ConsoleLog.Services
         private readonly LogService _logger;
         private readonly string _colecaoName = "localizacoes";
 
-        // ✅ Construtor NÃO pode ser async, então remova o await daqui
+        
         public FirestoreService(IConfiguration configuration, LogService logger)
         {
             _logger = logger;
@@ -72,6 +72,11 @@ namespace ConsoleLog.Services
                 _logger.LogError("Erro ao conectar ao Firestore", ex, "FIRESTORE");
                 throw;
             }
+        }
+        // Adicione este método no FirestoreService.cs
+        public FirestoreDb GetDb()
+        {
+            return _db;
         }
 
         // ✅ Método separado para verificar conexão (pode ser async)
