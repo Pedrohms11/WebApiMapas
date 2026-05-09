@@ -1,7 +1,7 @@
 ﻿using Google.Cloud.Firestore;
-using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
+using System.Text.Json;
 
 namespace WebApiMapas.Data
 {
@@ -9,25 +9,35 @@ namespace WebApiMapas.Data
     {
         public FirestoreDb Db { get; private set; }
 
-        public FirestoreService(IConfiguration configuration)
+        public FirestoreService()
         {
-            // Pega o ID do projeto e o caminho do arquivo JSON do appsettings.json            
-            var projectId = configuration["Firebase:ProjectId"] ?? "web-api-mapas";
-            var relativeKeyPath = configuration["Firebase:KeyFilePath"] ?? "config_API/firebase-key.json";
+            var relativeKeyPath = "config_API/firebase-key.json";
+            var fullPath = Path.Combine(AppContext.BaseDirectory, relativeKeyPath);
 
-            // Monta o caminho completo onde o arquivo JSON deve estar
-            var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativeKeyPath);
-
-            // Verifica se o arquivo existe na pasta para não dar erro de null
-            if (File.Exists(fullPath))
+            if (!File.Exists(fullPath))
             {
-                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", fullPath);
-                Db = FirestoreDb.Create(projectId);
+                throw new FileNotFoundException($"ERRO CRÍTICO: Arquivo não encontrado em: {fullPath}");
             }
-            else
-            {                
-                Console.WriteLine($"ERRO: Arquivo de credenciais não encontrado em: {fullPath}");
+
+            // Lê o arquivo JSON para descobrir o ID do Projeto automaticamente
+            string jsonString = File.ReadAllText(fullPath);
+            using JsonDocument doc = JsonDocument.Parse(jsonString);
+
+            if (!doc.RootElement.TryGetProperty("project_id", out var projectIdElement))
+            {
+                throw new Exception("O arquivo JSON é inválido. A propriedade 'project_id' não foi encontrada.");
             }
+
+            string projectId = projectIdElement.GetString()!;
+
+            // MODO DEFINITIVO: Injeção direta e explícita da credencial física
+            var builder = new FirestoreDbBuilder
+            {
+                ProjectId = projectId,
+                CredentialsPath = fullPath // Força o Google a usar este arquivo exato
+            };
+
+            Db = builder.Build();
         }
     }
 }
