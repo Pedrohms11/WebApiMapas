@@ -1,7 +1,10 @@
 ﻿using Google.Cloud.Firestore;
 using Microsoft.Extensions.Configuration;
 using ConsoleLog.Models;
-
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ConsoleLog.Services
 {
@@ -11,6 +14,7 @@ namespace ConsoleLog.Services
         private readonly LogService _logger;
         private readonly string _colecaoName = "localizacoes";
 
+        // ✅ Construtor NÃO pode ser async, então remova o await daqui
         public FirestoreService(IConfiguration configuration, LogService logger)
         {
             _logger = logger;
@@ -21,27 +25,38 @@ namespace ConsoleLog.Services
                 var keyPath = configuration["Firebase:KeyFilePath"];
 
                 if (string.IsNullOrEmpty(projectId))
-                    throw new Exception("ProjectId não configurado no appsettings.json");
+                    throw new Exception("ProjectId não configurado");
 
-                if (string.IsNullOrEmpty(keyPath))
-                    throw new Exception("KeyFilePath não configurado no appsettings.json");
-
-                // Resolver caminho completo
                 string resolvedKeyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, keyPath);
 
                 _logger.LogInfo($"ProjectId: {projectId}", "FIRESTORE");
                 _logger.LogInfo($"Arquivo de credencial: {resolvedKeyPath}", "FIRESTORE");
 
-                // Verificar se o arquivo existe
                 if (!File.Exists(resolvedKeyPath))
                 {
-                    throw new FileNotFoundException($"Arquivo de credencial não encontrado: {resolvedKeyPath}");
+                    throw new FileNotFoundException($"Arquivo não encontrado: {resolvedKeyPath}");
                 }
 
-                // ✅ LER O CONTEÚDO DO ARQUIVO JSON
+                // Ler o JSON
                 var jsonCredentials = File.ReadAllText(resolvedKeyPath);
 
-                // ✅ CRIAR O CLIENTE USANDO O JSON DIRETAMENTE (Método mais confiável)
+                // Verificar se é a conta correta
+                if (jsonCredentials.Contains("console-log-access"))
+                {
+                    _logger.LogInfo("Usando credencial específica do ConsoleLog - " + DateTime.Now.ToString(), "FIRESTORE");
+                }
+                else
+                {
+                    _logger.LogWarning("Usando credencial compartilhada (pode causar problemas)", "FIRESTORE");
+                }
+
+                // ✅ REMOVA o await daqui - construtor não pode ser async
+                // Para delay, use uma abordagem diferente ou mova para outro método
+
+                // Configurar variável de ambiente
+                Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", resolvedKeyPath);
+
+                // Criar o builder
                 var builder = new FirestoreDbBuilder
                 {
                     ProjectId = projectId,
@@ -59,15 +74,18 @@ namespace ConsoleLog.Services
             }
         }
 
-        /// <summary>
-        /// Verifica se a conexão com Firestore está ativa
-        /// </summary>
+        // ✅ Método separado para verificar conexão (pode ser async)
         public async Task<bool> VerificarConexao()
         {
             try
             {
-                // Tenta listar a primeira coleção para testar a conexão
+                _logger.LogInfo("Testando conexão com Firestore...", "FIRESTORE");
+
+                // Pequeno delay para garantir que a conexão foi estabelecida
+                await Task.Delay(100);
+
                 var collections = await _db.ListRootCollectionsAsync().Take(1).ToListAsync();
+
                 _logger.LogSuccess("Conexão com Firestore verificada com sucesso", "FIRESTORE");
                 return true;
             }
@@ -105,6 +123,32 @@ namespace ConsoleLog.Services
             {
                 _logger.LogError("Erro ao buscar todas as localizações no Firestore", ex, "FIRESTORE");
                 return new List<Localizacao>();
+            }
+        }
+
+        /// <summary>
+        /// Busca localização por ID no Firestore
+        /// </summary>
+        public async Task<Localizacao?> BuscarLocalizacaoPorId(string id)
+        {
+            try
+            {
+                DocumentReference docRef = _db.Collection(_colecaoName).Document(id);
+                DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
+
+                if (snapshot.Exists)
+                {
+                    _logger.LogInfo($"Localização {id} encontrada no Firestore", "FIRESTORE");
+                    return ConverterDocumentoParaLocalizacao(snapshot);
+                }
+
+                _logger.LogWarning($"Localização {id} não encontrada no Firestore", "FIRESTORE");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao buscar localização {id} no Firestore", ex, "FIRESTORE");
+                return null;
             }
         }
 
@@ -200,6 +244,7 @@ namespace ConsoleLog.Services
                 return null;
             }
         }
+
         /// <summary>
         /// Obtém estatísticas do Firestore
         /// </summary>
@@ -224,6 +269,7 @@ namespace ConsoleLog.Services
             }
         }
     }
+
     /// <summary>
     /// Estatísticas do Firestore
     /// </summary>
