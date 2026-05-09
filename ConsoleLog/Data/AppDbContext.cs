@@ -5,23 +5,34 @@ namespace ConsoleLog.Data
 {
     public class AppDbContext : DbContext
     {
-        private readonly string _connectionString;
+        // Construtor sem parâmetros para o EF Tools (design time)
+        public AppDbContext()
+        {
+        }
 
-        // Construtor com validação de null
+        // Construtor com parâmetros para sua aplicação (runtime)
         public AppDbContext(string connectionString)
         {
-            // ✅ Adicionar validação para evitar null
-            if (string.IsNullOrEmpty(connectionString))
-                throw new ArgumentNullException(nameof(connectionString), "Connection string não pode ser nula ou vazia");
-
             _connectionString = connectionString;
         }
+
+        private string? _connectionString;
 
         public DbSet<Localizacao> Localizacoes { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite(_connectionString);
+            // Se uma connection string foi fornecida (runtime), usa ela
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                optionsBuilder.UseSqlite(_connectionString);
+            }
+            // Se não (design time), usa uma connection string padrão para migrações
+            else
+            {
+                optionsBuilder.UseSqlite("Data Source=localizacao.db");
+            }
+
             optionsBuilder.EnableSensitiveDataLogging(false);
         }
 
