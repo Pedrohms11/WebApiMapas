@@ -20,8 +20,6 @@ namespace ConsoleLog.Services
         {
             _context = context;
             _logger = logger;
-
-            // Carregar informações do usuário atual do appsettings.json
             _usuarioAtual = configuration["UsuarioAtual:Nome"] ?? Environment.UserName;
             _emailUsuario = configuration["UsuarioAtual:Email"] ?? $"{Environment.UserName}@local.com";
             _perfilUsuario = configuration["UsuarioAtual:Perfil"] ?? "Usuário";
@@ -29,9 +27,6 @@ namespace ConsoleLog.Services
             _ipAddress = configuration["UsuarioAtual:IpAddress"] ?? "127.0.0.1";
         }
 
-        /// <summary>
-        /// Registra uma inserção no banco de dados
-        /// </summary>
         public async Task RegistrarInsercao(string tabela, string registroId, string dadosNovos, string origem = "API")
         {
             var auditoria = new Auditoria
@@ -53,16 +48,9 @@ namespace ConsoleLog.Services
 
             await _context.Auditoria.AddAsync(auditoria);
             await _context.SaveChangesAsync();
-
-            _logger.LogInsert($"✅ INSERT | Tabela: {tabela} | ID: {registroId} | Usuário: {_usuarioAtual} | Origem: {origem}");
-
-            // Exibir detalhes no console
-            ExibirAlteracaoNoConsole(auditoria);
+            _logger.LogInsert($"INSERT | {tabela} ID:{registroId} | Usuário: {_usuarioAtual}", "AUDITORIA");
         }
 
-        /// <summary>
-        /// Registra uma atualização no banco de dados
-        /// </summary>
         public async Task RegistrarAtualizacao(string tabela, string registroId, string dadosAntigos, string dadosNovos, string mudancas, string origem = "API")
         {
             var auditoria = new Auditoria
@@ -78,22 +66,15 @@ namespace ConsoleLog.Services
                 Maquina = _maquina,
                 IpAddress = _ipAddress,
                 DataHora = DateTime.Now,
-                Detalhes = $"Registro atualizado na tabela {tabela} via {origem}. Mudanças: {mudancas}",
+                Detalhes = $"Registro atualizado: {mudancas}",
                 Origem = origem
             };
 
             await _context.Auditoria.AddAsync(auditoria);
             await _context.SaveChangesAsync();
-
-            _logger.LogUpdate($"🔄 UPDATE | Tabela: {tabela} | ID: {registroId} | Usuário: {_usuarioAtual} | Mudanças: {mudancas}");
-
-            // Exibir detalhes no console
-            ExibirAlteracaoNoConsole(auditoria);
+            _logger.LogUpdate($"UPDATE | {tabela} ID:{registroId} | {mudancas}", "AUDITORIA");
         }
 
-        /// <summary>
-        /// Registra uma exclusão no banco de dados
-        /// </summary>
         public async Task RegistrarExclusao(string tabela, string registroId, string dadosAntigos, string origem = "API")
         {
             var auditoria = new Auditoria
@@ -115,63 +96,15 @@ namespace ConsoleLog.Services
 
             await _context.Auditoria.AddAsync(auditoria);
             await _context.SaveChangesAsync();
-
-            _logger.LogDelete($"🗑️ DELETE | Tabela: {tabela} | ID: {registroId} | Usuário: {_usuarioAtual} | Origem: {origem}");
-
-            // Exibir detalhes no console
-            ExibirAlteracaoNoConsole(auditoria);
+            _logger.LogDelete($"DELETE | {tabela} ID:{registroId}", "AUDITORIA");
         }
 
-        /// <summary>
-        /// Busca todas as alterações de um registro específico
-        /// </summary>
-        public async Task<List<Auditoria>> BuscarHistoricoRegistro(string tabela, string registroId)
-        {
-            return await _context.Auditoria
-                .Where(a => a.Tabela == tabela && a.RegistroId == registroId)
-                .OrderByDescending(a => a.DataHora)
-                .ToListAsync();
-        }
+        public async Task<List<Auditoria>> ObterTodasAlteracoes() => await _context.Auditoria.OrderByDescending(a => a.DataHora).ToListAsync();
+        public async Task<List<Auditoria>> BuscarAlteracoesPorUsuario(string usuario) => await _context.Auditoria.Where(a => a.Usuario.Contains(usuario)).OrderByDescending(a => a.DataHora).ToListAsync();
 
-        /// <summary>
-        /// Busca alterações por usuário
-        /// </summary>
-        public async Task<List<Auditoria>> BuscarAlteracoesPorUsuario(string usuario)
-        {
-            return await _context.Auditoria
-                .Where(a => a.Usuario.Contains(usuario))
-                .OrderByDescending(a => a.DataHora)
-                .ToListAsync();
-        }
-
-        /// <summary>
-        /// Busca alterações por período
-        /// </summary>
-        public async Task<List<Auditoria>> BuscarAlteracoesPorPeriodo(DateTime inicio, DateTime fim)
-        {
-            return await _context.Auditoria
-                .Where(a => a.DataHora >= inicio && a.DataHora <= fim)
-                .OrderByDescending(a => a.DataHora)
-                .ToListAsync();
-        }
-
-        /// <summary>
-        /// Obtém todas as alterações
-        /// </summary>
-        public async Task<List<Auditoria>> ObterTodasAlteracoes()
-        {
-            return await _context.Auditoria
-                .OrderByDescending(a => a.DataHora)
-                .ToListAsync();
-        }
-
-        /// <summary>
-        /// Obtém estatísticas de auditoria
-        /// </summary>
         public async Task<AuditoriaStats> ObterEstatisticas()
         {
             var todas = await _context.Auditoria.ToListAsync();
-
             return new AuditoriaStats
             {
                 TotalRegistros = todas.Count,
@@ -181,49 +114,6 @@ namespace ConsoleLog.Services
                 UsuariosAtivos = todas.Select(a => a.Usuario).Distinct().Count(),
                 UltimaAlteracao = todas.Any() ? todas.Max(a => a.DataHora) : DateTime.MinValue
             };
-        }
-
-        /// <summary>
-        /// Exibe uma alteração no console em tempo real
-        /// </summary>
-        private void ExibirAlteracaoNoConsole(Auditoria auditoria)
-        {
-            var corOriginal = Console.ForegroundColor;
-
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine(new string('═', 100));
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"🔔 NOVA ALTERAÇÃO DETECTADA - {auditoria.DataHora:HH:mm:ss}");
-            Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine(new string('═', 100));
-
-            // Cor da ação
-            switch (auditoria.Acao)
-            {
-                case "INSERT":
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    break;
-                case "UPDATE":
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    break;
-                case "DELETE":
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    break;
-            }
-
-            Console.WriteLine($"📌 AÇÃO: {auditoria.Acao}");
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"📋 TABELA: {auditoria.Tabela}");
-            Console.WriteLine($"🔑 ID: {auditoria.RegistroId}");
-            Console.WriteLine($"👤 USUÁRIO: {auditoria.Usuario} ({auditoria.EmailUsuario}) - {auditoria.PerfilUsuario}");
-            Console.WriteLine($"💻 MÁQUINA: {auditoria.Maquina}");
-            Console.WriteLine($"📡 ORIGEM: {auditoria.Origem}");
-            Console.WriteLine($"📝 DETALHES: {auditoria.Detalhes}");
-
-            Console.ForegroundColor = ConsoleColor.Magenta;
-            Console.WriteLine(new string('═', 100));
-            Console.ForegroundColor = corOriginal;
         }
     }
 

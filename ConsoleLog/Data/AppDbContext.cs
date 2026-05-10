@@ -13,7 +13,8 @@ namespace ConsoleLog.Data
         }
 
         public DbSet<Localizacao> Localizacoes { get; set; }
-        public DbSet<Auditoria> Auditoria { get; set; } // NOVO
+        public DbSet<Auditoria> Auditoria { get; set; }
+        public DbSet<LogRequisicao> LogsRequisicao { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -35,9 +36,13 @@ namespace ConsoleLog.Data
                 entity.Property(e => e.Latitude).IsRequired();
                 entity.Property(e => e.Longitude).IsRequired();
                 entity.Property(e => e.Timestamp).IsRequired();
+                entity.Property(e => e.DataHash).HasMaxLength(64);
+                entity.Property(e => e.LastSyncAt);
+
+                entity.HasIndex(e => e.Cep);
+                entity.HasIndex(e => e.Timestamp);
             });
 
-            // Configuração da tabela de Auditoria
             modelBuilder.Entity<Auditoria>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -59,8 +64,30 @@ namespace ConsoleLog.Data
                 entity.HasIndex(e => e.Acao);
                 entity.HasIndex(e => e.DataHora);
                 entity.HasIndex(e => e.Usuario);
-                entity.HasIndex(e => e.EmailUsuario);
-                entity.HasIndex(e => e.Origem);
+            });
+
+            modelBuilder.Entity<LogRequisicao>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Operacao).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Endpoint).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Parametros).HasMaxLength(200);
+                entity.Property(e => e.RequestBody).HasMaxLength(500);
+                entity.Property(e => e.ResponseBody).HasMaxLength(500);
+                entity.Property(e => e.Usuario).HasMaxLength(100);
+                entity.Property(e => e.EmailUsuario).HasMaxLength(100);
+                entity.Property(e => e.PerfilUsuario).HasMaxLength(50);
+                entity.Property(e => e.Maquina).HasMaxLength(100);
+                entity.Property(e => e.IpAddress).HasMaxLength(50);
+                entity.Property(e => e.MensagemErro).HasMaxLength(500);
+                entity.Property(e => e.Origem).HasMaxLength(50);
+                entity.Property(e => e.Categoria).HasMaxLength(50);
+
+                entity.HasIndex(e => e.Operacao);
+                entity.HasIndex(e => e.Endpoint);
+                entity.HasIndex(e => e.DataHora);
+                entity.HasIndex(e => e.Usuario);
+                entity.HasIndex(e => e.Sucesso);
             });
         }
 

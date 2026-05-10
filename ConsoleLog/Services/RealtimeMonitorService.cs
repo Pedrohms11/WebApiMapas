@@ -1,23 +1,16 @@
 ﻿using Google.Cloud.Firestore;
 using System.Text.Json;
 using ConsoleLog.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ConsoleLog.Services
 {
-    /// <summary>
-    /// Serviço de monitoramento em tempo real do Firebase Firestore
-    /// </summary>
     public class RealtimeMonitorService
     {
         private readonly FirestoreDb _firestoreDb;
         private readonly AuditoriaService _auditoriaService;
         private readonly LogService _logger;
         private readonly string _colecaoName = "localizacoes";
-        private IDisposable? _listener;
+        private FirestoreChangeListener? _listener;
         private Dictionary<string, Localizacao> _ultimoEstadoConhecido = new();
 
         public RealtimeMonitorService(FirestoreService firestoreService, AuditoriaService auditoriaService, LogService logger)
@@ -27,273 +20,107 @@ namespace ConsoleLog.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Inicia o monitoramento em tempo real do Firestore
-        /// </summary>
         public async Task IniciarMonitoramento()
         {
             try
             {
-                _logger.LogInfo("🚀 Iniciando monitoramento em tempo real do Firebase...", "MONITOR");
-
-                // Carregar estado atual
+                _logger.LogInfo("Iniciando monitoramento em tempo real...", "MONITOR");
                 await CarregarEstadoAtual();
 
-                // Configurar listener para mudanças em tempo real
                 var collectionRef = _firestoreDb.Collection(_colecaoName);
+                _listener = collectionRef.Listen(snapshot => Task.Run(() => ProcessarMudancas(snapshot)));
 
-                // ✅ CORREÇÃO: Armazenar o listener corretamente
-                _listener = collectionRef.Listen(snapshot =>
-                {
-                    // Processar mudanças em background
-                    Task.Run(() => ProcessarMudancas(snapshot));
-                });
-
-                _logger.LogSuccess("✅ Monitoramento em tempo real ativado!", "MONITOR");
+                _logger.LogSuccess("Monitoramento em tempo real ativado!", "MONITOR");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError("❌ Erro ao iniciar monitoramento", ex, "MONITOR");
-            }
+            catch (Exception ex) { _logger.LogError("Erro ao iniciar monitoramento", ex, "MONITOR"); }
         }
 
-        /// <summary>
-        /// Para o monitoramento em tempo real
-        /// </summary>
-        public void PararMonitoramento()
-        {
-            try
-            {
-                _listener?.Dispose();
-                _logger.LogInfo("⏹️ Monitoramento em tempo real parado.", "MONITOR");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Erro ao parar monitoramento", ex, "MONITOR");
-            }
-        }
-
-        /// <summary>
-        /// Carrega o estado atual de todos os documentos
-        /// </summary>
         private async Task CarregarEstadoAtual()
         {
-            try
+            var snapshot = await _firestoreDb.Collection(_colecaoName).GetSnapshotAsync();
+            _ultimoEstadoConhecido.Clear();
+            foreach (var doc in snapshot.Documents)
             {
-                var snapshot = await _firestoreDb.Collection(_colecaoName).GetSnapshotAsync();
-
-                _ultimoEstadoConhecido.Clear();
-
-                foreach (var doc in snapshot.Documents)
-                {
-                    var localizacao = ConverterDocumentoParaLocalizacao(doc);
-                    if (localizacao != null)
-                    {
-                        _ultimoEstadoConhecido[doc.Id] = localizacao;
-                    }
-                }
-
-                _logger.LogInfo($"📊 Estado inicial carregado: {_ultimoEstadoConhecido.Count} registros", "MONITOR");
+                var loc = ConverterDocumento(doc);
+                if (loc != null) _ultimoEstadoConhecido[doc.Id] = loc;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError("Erro ao carregar estado atual", ex, "MONITOR");
-            }
+            _logger.LogInfo($"Estado inicial: {_ultimoEstadoConhecido.Count} registros", "MONITOR");
         }
 
-        /// <summary>
-        /// Processa as mudanças detectadas no Firestore
-        /// </summary>
         private async Task ProcessarMudancas(QuerySnapshot snapshot)
         {
-            try
+            var docsAtuais = snapshot.Documents.ToDictionary(d => d.Id);
+            foreach (var id in _ultimoEstadoConhecido.Keys.ToList())
+                if (!docsAtuais.ContainsKey(id))
+                    await ProcessarExclusao(id, _ultimoEstadoConhecido[id]);
+
+            foreach (var doc in snapshot.Documents)
             {
-                var documentosAtuais = snapshot.Documents.ToDictionary(d => d.Id);
+                var atual = ConverterDocumento(doc);
+                if (atual == null) continue;
 
-                // Verificar documentos removidos
-                foreach (var id in _ultimoEstadoConhecido.Keys.ToList())
+                if (!_ultimoEstadoConhecido.ContainsKey(doc.Id))
+                    await ProcessarInsercao(doc.Id, atual);
+                else
                 {
-                    if (!documentosAtuais.ContainsKey(id))
-                    {
-                        await ProcessarExclusao(id, _ultimoEstadoConhecido[id]);
-                        _ultimoEstadoConhecido.Remove(id);
-                    }
+                    var anterior = _ultimoEstadoConhecido[doc.Id];
+                    var mudancas = Comparar(anterior, atual);
+                    if (!string.IsNullOrEmpty(mudancas))
+                        await ProcessarAtualizacao(doc.Id, anterior, atual, mudancas);
                 }
-
-                // Verificar documentos adicionados/alterados
-                foreach (var doc in snapshot.Documents)
-                {
-                    var localizacaoAtual = ConverterDocumentoParaLocalizacao(doc);
-                    if (localizacaoAtual == null) continue;
-
-                    if (!_ultimoEstadoConhecido.ContainsKey(doc.Id))
-                    {
-                        // Documento novo
-                        await ProcessarInsercao(doc.Id, localizacaoAtual);
-                        _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
-                    }
-                    else
-                    {
-                        // Documento existente - verificar mudanças
-                        var localizacaoAnterior = _ultimoEstadoConhecido[doc.Id];
-                        var mudancas = CompararLocalizacoes(localizacaoAnterior, localizacaoAtual);
-
-                        if (!string.IsNullOrEmpty(mudancas))
-                        {
-                            await ProcessarAtualizacao(doc.Id, localizacaoAnterior, localizacaoAtual, mudancas);
-                            _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Erro ao processar mudanças", ex, "MONITOR");
+                _ultimoEstadoConhecido[doc.Id] = atual;
             }
         }
 
-        /// <summary>
-        /// Processa uma inserção detectada
-        /// </summary>
         private async Task ProcessarInsercao(string id, Localizacao nova)
         {
-            var dadosNovos = JsonSerializer.Serialize(nova, new JsonSerializerOptions { WriteIndented = true });
-
-            await _auditoriaService.RegistrarInsercao(
-                tabela: "Localizacoes",
-                registroId: id,
-                dadosNovos: dadosNovos,
-                origem: "Firebase Realtime"
-            );
-
-            _logger.LogInsert($"📝 Nova localização detectada no Firebase: ID={id}", "REALTIME");
+            var dados = JsonSerializer.Serialize(nova, new JsonSerializerOptions { WriteIndented = true });
+            await _auditoriaService.RegistrarInsercao("Localizacoes", id, dados, "Firebase Realtime");
+            _logger.LogInsert($"Nova localização detectada: ID={id}", "REALTIME");
         }
 
-        /// <summary>
-        /// Processa uma atualização detectada
-        /// </summary>
         private async Task ProcessarAtualizacao(string id, Localizacao antiga, Localizacao nova, string mudancas)
         {
-            var dadosAntigos = JsonSerializer.Serialize(antiga, new JsonSerializerOptions { WriteIndented = true });
-            var dadosNovos = JsonSerializer.Serialize(nova, new JsonSerializerOptions { WriteIndented = true });
-
-            await _auditoriaService.RegistrarAtualizacao(
-                tabela: "Localizacoes",
-                registroId: id,
-                dadosAntigos: dadosAntigos,
-                dadosNovos: dadosNovos,
-                mudancas: mudancas,
-                origem: "Firebase Realtime"
-            );
-
-            _logger.LogUpdate($"🔄 Localização atualizada no Firebase: ID={id} | Mudanças: {mudancas}", "REALTIME");
+            var antigos = JsonSerializer.Serialize(antiga, new JsonSerializerOptions { WriteIndented = true });
+            var novos = JsonSerializer.Serialize(nova, new JsonSerializerOptions { WriteIndented = true });
+            await _auditoriaService.RegistrarAtualizacao("Localizacoes", id, antigos, novos, mudancas, "Firebase Realtime");
+            _logger.LogUpdate($"Localização atualizada: ID={id} | {mudancas}", "REALTIME");
         }
 
-        /// <summary>
-        /// Processa uma exclusão detectada
-        /// </summary>
         private async Task ProcessarExclusao(string id, Localizacao removida)
         {
-            var dadosAntigos = JsonSerializer.Serialize(removida, new JsonSerializerOptions { WriteIndented = true });
-
-            await _auditoriaService.RegistrarExclusao(
-                tabela: "Localizacoes",
-                registroId: id,
-                dadosAntigos: dadosAntigos,
-                origem: "Firebase Realtime"
-            );
-
-            _logger.LogDelete($"🗑️ Localização removida do Firebase: ID={id}", "REALTIME");
+            var dados = JsonSerializer.Serialize(removida, new JsonSerializerOptions { WriteIndented = true });
+            await _auditoriaService.RegistrarExclusao("Localizacoes", id, dados, "Firebase Realtime");
+            _logger.LogDelete($"Localização removida: ID={id}", "REALTIME");
         }
 
-        /// <summary>
-        /// Compara duas localizações e retorna as mudanças
-        /// </summary>
-        private string CompararLocalizacoes(Localizacao antiga, Localizacao nova)
+        private string Comparar(Localizacao a, Localizacao b)
         {
             var mudancas = new List<string>();
-
-            if (antiga.Logradouro != nova.Logradouro)
-                mudancas.Add($"Logradouro: '{antiga.Logradouro}' → '{nova.Logradouro}'");
-
-            if (antiga.Numero != nova.Numero)
-                mudancas.Add($"Numero: '{antiga.Numero}' → '{nova.Numero}'");
-
-            if (antiga.Bairro != nova.Bairro)
-                mudancas.Add($"Bairro: '{antiga.Bairro}' → '{nova.Bairro}'");
-
-            if (antiga.Cep != nova.Cep)
-                mudancas.Add($"Cep: '{antiga.Cep}' → '{nova.Cep}'");
-
-            if (Math.Abs(antiga.Latitude - nova.Latitude) > 0.0001)
-                mudancas.Add($"Latitude: {antiga.Latitude} → {nova.Latitude}");
-
-            if (Math.Abs(antiga.Longitude - nova.Longitude) > 0.0001)
-                mudancas.Add($"Longitude: {antiga.Longitude} → {nova.Longitude}");
-
-            return mudancas.Any() ? string.Join("; ", mudancas) : "";
+            if (a.Logradouro != b.Logradouro) mudancas.Add($"Logradouro: '{a.Logradouro}' → '{b.Logradouro}'");
+            if (a.Numero != b.Numero) mudancas.Add($"Numero: '{a.Numero}' → '{b.Numero}'");
+            if (a.Bairro != b.Bairro) mudancas.Add($"Bairro: '{a.Bairro}' → '{b.Bairro}'");
+            if (a.Cep != b.Cep) mudancas.Add($"Cep: '{a.Cep}' → '{b.Cep}'");
+            return string.Join("; ", mudancas);
         }
 
-        /// <summary>
-        /// Converte documento Firestore para Localizacao
-        /// </summary>
-        private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot doc)
+        private Localizacao? ConverterDocumento(DocumentSnapshot doc)
         {
-            try
+            if (!doc.Exists) return null;
+            var dados = doc.ToDictionary();
+            return new Localizacao
             {
-                if (!doc.Exists) return null;
-
-                var dados = doc.ToDictionary();
-
-                // Tratamento de Timestamp
-                DateTime timestamp = DateTime.UtcNow;
-                if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
-                {
-                    timestamp = ts.ToDateTime();
-                }
-
-                // Tratamento de CEP (pode vir como número)
-                string cep = "";
-                if (dados.ContainsKey("Cep") && dados["Cep"] != null)
-                {
-                    var cepObj = dados["Cep"];
-                    cep = cepObj switch
-                    {
-                        string str => str,
-                        long l => l.ToString("D8"),
-                        int i => i.ToString("D8"),
-                        _ => cepObj.ToString() ?? ""
-                    };
-                }
-
-                return new Localizacao
-                {
-                    Id = doc.Id,
-                    Logradouro = dados.ContainsKey("Logradouro") ? dados["Logradouro"]?.ToString() ?? "" : "",
-                    Numero = dados.ContainsKey("Numero") ? dados["Numero"]?.ToString() ?? "" : "",
-                    Bairro = dados.ContainsKey("Bairro") ? dados["Bairro"]?.ToString() ?? "" : "",
-                    Cep = cep,
-                    Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"] ?? 0) : 0,
-                    Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"] ?? 0) : 0,
-                    Timestamp = timestamp,
-                    LastSyncAt = DateTime.UtcNow
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Erro ao converter documento: {ex.Message}", ex, "MONITOR");
-                return null;
-            }
+                Id = doc.Id,
+                Logradouro = dados.GetValueOrDefault("Logradouro")?.ToString() ?? "",
+                Numero = dados.GetValueOrDefault("Numero")?.ToString() ?? "",
+                Bairro = dados.GetValueOrDefault("Bairro")?.ToString() ?? "",
+                Cep = dados.GetValueOrDefault("Cep")?.ToString() ?? "",
+                Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"] ?? 0) : 0,
+                Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"] ?? 0) : 0,
+                Timestamp = dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts ? ts.ToDateTime() : DateTime.UtcNow
+            };
         }
 
-        /// <summary>
-        /// Obtém o status atual do monitoramento
-        /// </summary>
-        public bool IsMonitoring => _listener != null;
-
-        /// <summary>
-        /// Obtém o número de registros monitorados
-        /// </summary>
-        public int MonitoredCount => _ultimoEstadoConhecido.Count;
+        public void PararMonitoramento() { _listener?.Dispose(); _logger.LogInfo("Monitoramento parado.", "MONITOR"); }
     }
 }
