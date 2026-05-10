@@ -15,11 +15,11 @@ namespace ConsoleLog.Models
 
         [Required]
         [StringLength(100)]
-        public string RegistroId { get; set; } = string.Empty; // Firebase ID (string)
+        public string RegistroId { get; set; } = string.Empty;
 
         [Required]
         [StringLength(20)]
-        public string Acao { get; set; } = string.Empty; // INSERT, UPDATE, DELETE
+        public string Acao { get; set; } = string.Empty;
 
         [Required]
         public string DadosAntigos { get; set; } = string.Empty;
@@ -49,6 +49,6 @@ namespace ConsoleLog.Models
         public string Detalhes { get; set; } = string.Empty;
 
         [StringLength(50)]
-        public string Origem { get; set; } = string.Empty; // Firebase, API, Console
+        public string Origem { get; set; } = string.Empty;
     }
 }

@@ -1,6 +1,10 @@
 ﻿using Google.Cloud.Firestore;
 using System.Text.Json;
 using ConsoleLog.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace ConsoleLog.Services
 {
@@ -37,8 +41,11 @@ namespace ConsoleLog.Services
 
                 // Configurar listener para mudanças em tempo real
                 var collectionRef = _firestoreDb.Collection(_colecaoName);
+
+                // ✅ CORREÇÃO: Armazenar o listener corretamente
                 _listener = collectionRef.Listen(snapshot =>
                 {
+                    // Processar mudanças em background
                     Task.Run(() => ProcessarMudancas(snapshot));
                 });
 
@@ -55,8 +62,15 @@ namespace ConsoleLog.Services
         /// </summary>
         public void PararMonitoramento()
         {
-            _listener?.Dispose();
-            _logger.LogInfo("⏹️ Monitoramento em tempo real parado.", "MONITOR");
+            try
+            {
+                _listener?.Dispose();
+                _logger.LogInfo("⏹️ Monitoramento em tempo real parado.", "MONITOR");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Erro ao parar monitoramento", ex, "MONITOR");
+            }
         }
 
         /// <summary>
@@ -64,18 +78,27 @@ namespace ConsoleLog.Services
         /// </summary>
         private async Task CarregarEstadoAtual()
         {
-            var snapshot = await _firestoreDb.Collection(_colecaoName).GetSnapshotAsync();
-
-            foreach (var doc in snapshot.Documents)
+            try
             {
-                var localizacao = ConverterDocumentoParaLocalizacao(doc);
-                if (localizacao != null)
-                {
-                    _ultimoEstadoConhecido[doc.Id] = localizacao;
-                }
-            }
+                var snapshot = await _firestoreDb.Collection(_colecaoName).GetSnapshotAsync();
 
-            _logger.LogInfo($"📊 Estado inicial carregado: {_ultimoEstadoConhecido.Count} registros", "MONITOR");
+                _ultimoEstadoConhecido.Clear();
+
+                foreach (var doc in snapshot.Documents)
+                {
+                    var localizacao = ConverterDocumentoParaLocalizacao(doc);
+                    if (localizacao != null)
+                    {
+                        _ultimoEstadoConhecido[doc.Id] = localizacao;
+                    }
+                }
+
+                _logger.LogInfo($"📊 Estado inicial carregado: {_ultimoEstadoConhecido.Count} registros", "MONITOR");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Erro ao carregar estado atual", ex, "MONITOR");
+            }
         }
 
         /// <summary>
@@ -83,42 +106,49 @@ namespace ConsoleLog.Services
         /// </summary>
         private async Task ProcessarMudancas(QuerySnapshot snapshot)
         {
-            var documentosAtuais = snapshot.Documents.ToDictionary(d => d.Id);
-
-            // Verificar documentos removidos
-            foreach (var id in _ultimoEstadoConhecido.Keys.ToList())
+            try
             {
-                if (!documentosAtuais.ContainsKey(id))
-                {
-                    await ProcessarExclusao(id, _ultimoEstadoConhecido[id]);
-                    _ultimoEstadoConhecido.Remove(id);
-                }
-            }
+                var documentosAtuais = snapshot.Documents.ToDictionary(d => d.Id);
 
-            // Verificar documentos adicionados/alterados
-            foreach (var doc in snapshot.Documents)
-            {
-                var localizacaoAtual = ConverterDocumentoParaLocalizacao(doc);
-                if (localizacaoAtual == null) continue;
-
-                if (!_ultimoEstadoConhecido.ContainsKey(doc.Id))
+                // Verificar documentos removidos
+                foreach (var id in _ultimoEstadoConhecido.Keys.ToList())
                 {
-                    // Documento novo
-                    await ProcessarInsercao(doc.Id, localizacaoAtual);
-                    _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
-                }
-                else
-                {
-                    // Documento existente - verificar mudanças
-                    var localizacaoAnterior = _ultimoEstadoConhecido[doc.Id];
-                    var mudancas = CompararLocalizacoes(localizacaoAnterior, localizacaoAtual);
-
-                    if (!string.IsNullOrEmpty(mudancas))
+                    if (!documentosAtuais.ContainsKey(id))
                     {
-                        await ProcessarAtualizacao(doc.Id, localizacaoAnterior, localizacaoAtual, mudancas);
-                        _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
+                        await ProcessarExclusao(id, _ultimoEstadoConhecido[id]);
+                        _ultimoEstadoConhecido.Remove(id);
                     }
                 }
+
+                // Verificar documentos adicionados/alterados
+                foreach (var doc in snapshot.Documents)
+                {
+                    var localizacaoAtual = ConverterDocumentoParaLocalizacao(doc);
+                    if (localizacaoAtual == null) continue;
+
+                    if (!_ultimoEstadoConhecido.ContainsKey(doc.Id))
+                    {
+                        // Documento novo
+                        await ProcessarInsercao(doc.Id, localizacaoAtual);
+                        _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
+                    }
+                    else
+                    {
+                        // Documento existente - verificar mudanças
+                        var localizacaoAnterior = _ultimoEstadoConhecido[doc.Id];
+                        var mudancas = CompararLocalizacoes(localizacaoAnterior, localizacaoAtual);
+
+                        if (!string.IsNullOrEmpty(mudancas))
+                        {
+                            await ProcessarAtualizacao(doc.Id, localizacaoAnterior, localizacaoAtual, mudancas);
+                            _ultimoEstadoConhecido[doc.Id] = localizacaoAtual;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Erro ao processar mudanças", ex, "MONITOR");
             }
         }
 
@@ -135,6 +165,8 @@ namespace ConsoleLog.Services
                 dadosNovos: dadosNovos,
                 origem: "Firebase Realtime"
             );
+
+            _logger.LogInsert($"📝 Nova localização detectada no Firebase: ID={id}", "REALTIME");
         }
 
         /// <summary>
@@ -153,6 +185,8 @@ namespace ConsoleLog.Services
                 mudancas: mudancas,
                 origem: "Firebase Realtime"
             );
+
+            _logger.LogUpdate($"🔄 Localização atualizada no Firebase: ID={id} | Mudanças: {mudancas}", "REALTIME");
         }
 
         /// <summary>
@@ -168,6 +202,8 @@ namespace ConsoleLog.Services
                 dadosAntigos: dadosAntigos,
                 origem: "Firebase Realtime"
             );
+
+            _logger.LogDelete($"🗑️ Localização removida do Firebase: ID={id}", "REALTIME");
         }
 
         /// <summary>
@@ -203,23 +239,61 @@ namespace ConsoleLog.Services
         /// </summary>
         private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot doc)
         {
-            if (!doc.Exists) return null;
-
-            var dados = doc.ToDictionary();
-
-            return new Localizacao
+            try
             {
-                Id = doc.Id,
-                Logradouro = dados.ContainsKey("Logradouro") ? dados["Logradouro"]?.ToString() ?? "" : "",
-                Numero = dados.ContainsKey("Numero") ? dados["Numero"]?.ToString() ?? "" : "",
-                Bairro = dados.ContainsKey("Bairro") ? dados["Bairro"]?.ToString() ?? "" : "",
-                Cep = dados.ContainsKey("Cep") ? dados["Cep"]?.ToString() ?? "" : "",
-                Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"]) : 0,
-                Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"]) : 0,
-                Timestamp = dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts
-                    ? ts.ToDateTime()
-                    : DateTime.UtcNow
-            };
+                if (!doc.Exists) return null;
+
+                var dados = doc.ToDictionary();
+
+                // Tratamento de Timestamp
+                DateTime timestamp = DateTime.UtcNow;
+                if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
+                {
+                    timestamp = ts.ToDateTime();
+                }
+
+                // Tratamento de CEP (pode vir como número)
+                string cep = "";
+                if (dados.ContainsKey("Cep") && dados["Cep"] != null)
+                {
+                    var cepObj = dados["Cep"];
+                    cep = cepObj switch
+                    {
+                        string str => str,
+                        long l => l.ToString("D8"),
+                        int i => i.ToString("D8"),
+                        _ => cepObj.ToString() ?? ""
+                    };
+                }
+
+                return new Localizacao
+                {
+                    Id = doc.Id,
+                    Logradouro = dados.ContainsKey("Logradouro") ? dados["Logradouro"]?.ToString() ?? "" : "",
+                    Numero = dados.ContainsKey("Numero") ? dados["Numero"]?.ToString() ?? "" : "",
+                    Bairro = dados.ContainsKey("Bairro") ? dados["Bairro"]?.ToString() ?? "" : "",
+                    Cep = cep,
+                    Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"] ?? 0) : 0,
+                    Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"] ?? 0) : 0,
+                    Timestamp = timestamp,
+                    LastSyncAt = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Erro ao converter documento: {ex.Message}", ex, "MONITOR");
+                return null;
+            }
         }
+
+        /// <summary>
+        /// Obtém o status atual do monitoramento
+        /// </summary>
+        public bool IsMonitoring => _listener != null;
+
+        /// <summary>
+        /// Obtém o número de registros monitorados
+        /// </summary>
+        public int MonitoredCount => _ultimoEstadoConhecido.Count;
     }
 }
