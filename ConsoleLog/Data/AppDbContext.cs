@@ -5,8 +5,14 @@ namespace ConsoleLog.Data
 {
     public class AppDbContext : DbContext
     {
-        private readonly string _connectionString;
+        private readonly string? _connectionString;
 
+        // Construtor sem parâmetros para o EF Tools (design time)
+        public AppDbContext()
+        {
+        }
+
+        // Construtor com parâmetros para sua aplicação (runtime)
         public AppDbContext(string connectionString)
         {
             _connectionString = connectionString;
@@ -18,14 +24,22 @@ namespace ConsoleLog.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite(_connectionString);
-            optionsBuilder.EnableSensitiveDataLogging(true);
+            if (!optionsBuilder.IsConfigured)
+            {
+                var connection = !string.IsNullOrEmpty(_connectionString)
+                    ? _connectionString
+                    : "Data Source=localizacao.db";
+
+                optionsBuilder.UseSqlite(connection);
+                optionsBuilder.EnableSensitiveDataLogging(true);
+            }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // Configuração Localizacao
             modelBuilder.Entity<Localizacao>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -43,6 +57,7 @@ namespace ConsoleLog.Data
                 entity.HasIndex(e => e.Timestamp);
             });
 
+            // Configuração Auditoria
             modelBuilder.Entity<Auditoria>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -66,6 +81,7 @@ namespace ConsoleLog.Data
                 entity.HasIndex(e => e.Usuario);
             });
 
+            // Configuração LogRequisicao
             modelBuilder.Entity<LogRequisicao>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -93,7 +109,51 @@ namespace ConsoleLog.Data
 
         public void ApplyMigrations()
         {
-            Database.Migrate();
+            try
+            {
+                // Verificar se o banco existe
+                var dbExists = File.Exists("localizacao.db");
+
+                if (!dbExists)
+                {
+                    Database.Migrate();
+                }
+                else
+                {
+                    // Verificar se a tabela __EFMigrationsHistory existe
+                    var hasHistoryTable = Database.SqlQueryRaw<int>(
+                        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='__EFMigrationsHistory'")
+                        .ToList()
+                        .FirstOrDefault() > 0;
+
+                    if (!hasHistoryTable)
+                    {
+                        // Recriar o banco se a tabela de migrações não existir
+                        Database.EnsureDeleted();
+                        Database.Migrate();
+                    }
+                    else if (Database.GetPendingMigrations().Any())
+                    {
+                        Database.Migrate();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao aplicar migrações: {ex.Message}");
+                // Tentar recriar o banco
+                try
+                {
+                    Database.EnsureDeleted();
+                    Database.Migrate();
+                    Console.WriteLine("Banco de dados recriado com sucesso!");
+                }
+                catch (Exception ex2)
+                {
+                    Console.WriteLine($"Erro fatal ao recriar banco: {ex2.Message}");
+                    throw;
+                }
+            }
         }
     }
 }

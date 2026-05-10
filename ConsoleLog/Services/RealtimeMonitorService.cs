@@ -32,7 +32,23 @@ namespace ConsoleLog.Services
 
                 _logger.LogSuccess("Monitoramento em tempo real ativado!", "MONITOR");
             }
-            catch (Exception ex) { _logger.LogError("Erro ao iniciar monitoramento", ex, "MONITOR"); }
+            catch (Exception ex)
+            {
+                _logger.LogError("Erro ao iniciar monitoramento", ex, "MONITOR");
+            }
+        }
+
+        /// <summary>
+        /// Para o monitoramento em tempo real - CORRIGIDO
+        /// </summary>
+        public void PararMonitoramento()
+        {
+            if (_listener != null)
+            {
+                _listener.StopAsync();  // ✅ Usar Stop() em vez de Dispose()
+                _listener = null;
+            }
+            _logger.LogInfo("Monitoramento parado.", "MONITOR");
         }
 
         private async Task CarregarEstadoAtual()
@@ -50,10 +66,13 @@ namespace ConsoleLog.Services
         private async Task ProcessarMudancas(QuerySnapshot snapshot)
         {
             var docsAtuais = snapshot.Documents.ToDictionary(d => d.Id);
+
+            // Verificar removidos
             foreach (var id in _ultimoEstadoConhecido.Keys.ToList())
                 if (!docsAtuais.ContainsKey(id))
                     await ProcessarExclusao(id, _ultimoEstadoConhecido[id]);
 
+            // Verificar novos/alterados
             foreach (var doc in snapshot.Documents)
             {
                 var atual = ConverterDocumento(doc);
@@ -108,6 +127,14 @@ namespace ConsoleLog.Services
         {
             if (!doc.Exists) return null;
             var dados = doc.ToDictionary();
+
+            // Corrigir a conversão do Timestamp
+            DateTime timestamp = DateTime.UtcNow;
+            if (dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts)
+            {
+                timestamp = ts.ToDateTime();
+            }
+
             return new Localizacao
             {
                 Id = doc.Id,
@@ -117,10 +144,8 @@ namespace ConsoleLog.Services
                 Cep = dados.GetValueOrDefault("Cep")?.ToString() ?? "",
                 Latitude = dados.ContainsKey("Latitude") ? Convert.ToDouble(dados["Latitude"] ?? 0) : 0,
                 Longitude = dados.ContainsKey("Longitude") ? Convert.ToDouble(dados["Longitude"] ?? 0) : 0,
-                Timestamp = dados.ContainsKey("Timestamp") && dados["Timestamp"] is Timestamp ts ? ts.ToDateTime() : DateTime.UtcNow
+                Timestamp = timestamp  // ✅ Corrigido
             };
         }
-
-        public void PararMonitoramento() { _listener?.Dispose(); _logger.LogInfo("Monitoramento parado.", "MONITOR"); }
     }
 }
