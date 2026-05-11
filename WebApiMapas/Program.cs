@@ -43,6 +43,18 @@ var firestoreDb = new FirestoreDbBuilder
     Credential = credential
 }.Build();
 
+// Libera o CORS para qualquer Front-end conseguir acessar a API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirTudo",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -52,6 +64,9 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = string.Empty;
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "API de Geolocalização v1");
 });
+
+// Ativa a política de CORS que criamos acima
+app.UseCors("PermitirTudo");
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
