@@ -80,9 +80,7 @@ namespace WebApiMapas.Service
         /// <returns></returns>
         public async Task<Localizacao?> ObterPorLogradouro(string logradouro)
         {
-            // ATENÇÃO: O Firestore diferencia maiúsculas de minúsculas. 
-            // O campo no banco deve se chamar exatamente "Logradouro".
-            Query query = _firestoreDb.Collection(_collectionName).WhereEqualTo("Logradouro", logradouro);
+            Query query = _firestoreDb.Collection(_collectionName);
             QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
             if (snapshot.Documents.Count > 0)
