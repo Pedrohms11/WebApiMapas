@@ -23,11 +23,11 @@ namespace ConsoleLog.Views
                 Console.Clear();
                 Console.WriteLine(@"
 ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                    SISTEMA DE MONITORAMENTO FIREBASE - AUDITORIA EM TEMPO REAL                               ║
+║                    SISTEMA DE MONITORAMENTO FIREBASE - AUDITORIA EM TEMPO REAL                                ║
 ╠═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║ 1 - Listar Localizações    2 - Buscar por ID    3 - Buscar por CEP    4 - Buscar por Bairro                 ║
-║ 5 - Buscar por Período     6 - Sincronizar      7 - Estatísticas                                            ║
-║ 8 - Histórico Alterações   9 - Logs Requisições 0 - Sair                                                    ║
+║ 1 - Listar Localizações    2 - Buscar por ID    3 - Buscar por CEP    4 - Buscar por Bairro                   ║
+║ 5 - Buscar por Período     6 - Sincronizar      7 - Estatísticas                                              ║
+║ 8 - Histórico Alterações   9 - Logs Requisições 0 - Sair                                                      ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝");
                 Console.Write("\n👉 Opção: ");
                 var opcao = Console.ReadLine();
