@@ -3,25 +3,49 @@ using ConsoleLog.Models;
 
 namespace ConsoleLog.Data
 {
+    /// <summary>
+    /// APPDbContext é a classe de contexto do Entity Framework Core que representa a sessão com o banco de dados.
+    /// Gerencia as conexões, configurações de entidades e operações de migração para os bancos de dados SQLite.
+    /// </summary>
     public class AppDbContext : DbContext
     {
         private readonly string? _connectionString;
 
-        // Construtor sem parâmetros para o EF Tools (design time)
+        /// <summary>
+        /// Construtor sem parâmetros para uso pelo Entity Framework Tools em tempo de design.
+        /// </summary>
         public AppDbContext()
         {
         }
 
-        // Construtor com parâmetros para sua aplicação (runtime)
+        /// <summary>
+        /// Construtor que recebe a string de conexão para ser usada em tempo de execução.
+        /// </summary>
+        /// <param name="connectionString">String de conexão para o banco de dados SQLite.</param>
         public AppDbContext(string connectionString)
         {
             _connectionString = connectionString;
         }
 
+        /// <summary>
+        /// DbSet para a entidade Localizacao, representando a tabela de localizações no banco de dados.
+        /// </summary>
         public DbSet<Localizacao> Localizacoes { get; set; }
+
+        /// <summary>
+        /// DbSet para a entidade Auditoria, representando a tabela de registros de auditoria no banco de dados.
+        /// </summary>
         public DbSet<Auditoria> Auditoria { get; set; }
+
+        /// <summary>
+        /// DbSet para a entidade LogRequisicao, representando a tabela de logs de requisições no banco de dados.
+        /// </summary>
         public DbSet<LogRequisicao> LogsRequisicao { get; set; }
 
+        /// <summary>
+        /// Configura as opções de conexão com o banco de dados SQLite.
+        /// </summary>
+        /// <param name="optionsBuilder">Construtor de opções do DbContext usado para configurar a conexão.</param>
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -35,6 +59,11 @@ namespace ConsoleLog.Data
             }
         }
 
+        /// <summary>
+        /// Configura o modelo de entidades e seus mapeamentos para o banco de dados.
+        /// Define chaves primárias, propriedades obrigatórias, tamanhos máximos e índices para cada entidade.
+        /// </summary>
+        /// <param name="modelBuilder">Construtor de modelo usado para configurar as entidades.</param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -107,6 +136,12 @@ namespace ConsoleLog.Data
             });
         }
 
+        /// <summary>
+        /// Aplica automaticamente as migrações pendentes ao banco de dados.
+        /// Verifica a existência do banco, tabelas de migração e aplica migrações pendentes.
+        /// Em caso de erro, tenta recriar o banco de dados completamente.
+        /// </summary>
+        /// <exception cref="Exception">Lança uma exceção quando não é possível recriar o banco de dados.</exception>
         public void ApplyMigrations()
         {
             try
