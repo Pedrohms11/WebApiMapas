@@ -230,7 +230,7 @@ namespace WebApiMapas.Controllers
         /// PUT: api/Mapas/{id} - Atualiza uma localização específica por ID.
         /// </remarks>
         /// <param name="id"></param>
-        /// <param name="localizacaoAtualizada"></param>
+        /// <param name="atualizadaLocalizacao"></param>
         /// <returns></returns>
         /// <response code="200">Localização atualizada com sucesso.</response>
         /// <response code="400">Dados inválidos.</response>
