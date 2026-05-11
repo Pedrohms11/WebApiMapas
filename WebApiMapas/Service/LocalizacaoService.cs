@@ -21,6 +21,8 @@ namespace WebApiMapas.Service
         /// Construtor da classe - Recebe o Logger e o serviço do Firebase 
         /// via injeção de dependência. Repositório antigo removido!
         /// </summary>
+        /// <param name="logger"></param>
+        /// <param name="firestoreService"></param>
         public LocalizacaoService(ILogger<LocalizacaoService> logger, FirestoreService firestoreService)
         {
             _logger = logger;
@@ -30,6 +32,7 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Listar todas as localizações buscando direto no Firebase.
         /// </summary>
+        /// <returns></returns>
         public async Task<List<Localizacao>> Listar()
         {
             CollectionReference collectionRef = _firestoreDb.Collection(_collectionName);
@@ -53,6 +56,8 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Listar uma localização por ID buscando direto no Firebase
         /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<Localizacao?> ObterPorId(string id)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
@@ -71,11 +76,11 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Listar uma localização por logradouro buscando direto no Firebase
         /// </summary>
+        /// <param name="logradouro"></param>
+        /// <returns></returns>
         public async Task<Localizacao?> ObterPorLogradouro(string logradouro)
         {
-            // ATENÇÃO: O Firestore diferencia maiúsculas de minúsculas. 
-            // O campo no banco deve se chamar exatamente "Logradouro".
-            Query query = _firestoreDb.Collection(_collectionName).WhereEqualTo("Logradouro", logradouro);
+            Query query = _firestoreDb.Collection(_collectionName);
             QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
             if (snapshot.Documents.Count > 0)
@@ -92,6 +97,9 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Criar uma nova localização persistindo direto no Firebase (Com Auto-Incremento)
         /// </summary>
+        /// <param name="localizacao"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public async Task<Localizacao> Criar(Localizacao localizacao)
         {
             // Validações
@@ -143,6 +151,9 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Atualiza uma localização existente no Firebase. 
         /// </summary>
+        /// <param name="id"></param>
+        /// <param name="existente"></param>
+        /// <returns></returns>
         public async Task Atualizar(string id, Localizacao existente)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
@@ -155,6 +166,8 @@ namespace WebApiMapas.Service
         /// <summary>
         /// Deletar um documento pelo ID no Firebase
         /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task Delete(string id)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
