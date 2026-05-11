@@ -535,6 +535,383 @@ Projeto acadêmico focado em:
 - Desenvolvimento de APIs REST;
 - Persistência de dados geográficos.
 
-### Desenvolvedora
+   #  ConsoleLog — Sistema Local de Logs e Auditoria
 
-**Diulie Mileide**
+O **ConsoleLog** é um módulo auxiliar da solução **WebApiMapas**, desenvolvido para realizar o registro, monitoramento e auditoria local das operações executadas pela API.
+
+Diferente da API principal, o ConsoleLog possui foco em **armazenamento local de logs na máquina**, permitindo rastreamento de operações, monitoramento de sincronizações, análise de requisições e auditoria de alterações realizadas nos dados geográficos.
+
+A aplicação foi desenvolvida em **C# com .NET 8**, utilizando **Entity Framework Core**, integração com **Firebase Firestore** e arquitetura baseada em **MVVM (Model-View-ViewModel)**.
+
+---
+
+# Objetivo do Projeto
+
+O ConsoleLog foi desenvolvido para:
+
+- Registrar logs localmente;
+- Monitorar operações da API;
+- Armazenar auditorias na máquina;
+- Registrar sincronizações com Firestore;
+- Monitorar requisições HTTP;
+- Gerar estatísticas operacionais;
+- Permitir rastreabilidade das ações executadas;
+- Auxiliar na análise e depuração da aplicação.
+
+---
+
+#  Arquitetura do Projeto
+
+```text
+ConsoleLog/
+│
+├── Data/
+│   └── AppDbContext.cs
+│
+├── Models/
+│   ├── Localizacao.cs
+│   ├── Auditoria.cs
+│  
+│
+├── Services/
+│   ├── LogService.cs
+│   ├── FirestoreService.cs
+│   ├── AuditoriaService.cs
+│   ├── RealTimeMonitorService.cs
+│   ├── RequisicaoLoggerService.cs
+│   └── Sync/
+│       └── DataSyncService.cs
+│
+├── ViewModels/
+│   └── LocalizacaoViewModel.cs
+│
+├── Views/
+│   └── LocalizacaoView.cs
+│
+├── Program.cs
+└── appsettings.json
+```
+
+---
+
+##  Arquitetura Utilizada
+
+O projeto utiliza o padrão:
+
+###  MVVM — Model View ViewModel
+
+Separando responsabilidades entre:
+
+| Camada | Responsabilidade |
+|---|---|
+| Models | Estrutura dos dados |
+| Views | Interface Console |
+| ViewModels | Regras de exibição |
+| Services | Lógica operacional |
+
+---
+
+###  Registro Local de Logs
+
+O principal objetivo do ConsoleLog é registrar logs diretamente na máquina local.
+
+Os logs são armazenados em arquivos como:
+
+```text
+auditoria.log
+```
+
+---
+
+###  Informações Registradas
+
+O sistema registra:
+
+- Inserções;
+- Atualizações;
+- Exclusões;
+- Erros;
+- Sincronizações;
+- Requisições HTTP;
+- Tempo de resposta;
+- Auditorias;
+- Eventos operacionais.
+
+---
+
+###   Exemplo de Log
+
+```text
+[2026-05-11 20:15:10] [SUCCESS] ✓ Firestore conectado - Projeto: webapimapas
+[2026-05-11 20:15:15] [REQUEST] ✅ GET /api/Mapas - 200 - 120ms
+[2026-05-11 20:15:20] [INSERT] ➕ INSERT | Localizacao ID:15
+[2026-05-11 20:15:30] [ERROR] ✗ Erro ao sincronizar dados
+```
+
+---
+
+###  Interface Console
+
+A aplicação disponibiliza um menu interativo para monitoramento e consultas:
+
+```text
+╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                    SISTEMA DE MONITORAMENTO FIREBASE - AUDITORIA EM TEMPO REAL                               ║
+╠═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ 1 - Listar Localizações    2 - Buscar por ID    3 - Buscar por CEP    4 - Buscar por Bairro                 ║
+║ 5 - Buscar por Período     6 - Sincronizar      7 - Estatísticas                                            ║
+║ 8 - Histórico Alterações   9 - Logs Requisições 0 - Sair                                                    ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+# Funcionalidades Implementadas
+
+###  Registro Local de Logs
+
+Todos os eventos são registrados localmente utilizando:
+
+```csharp
+LogService
+```
+
+Com gravação automática em arquivo.
+
+---
+
+###  Auditoria Completa
+
+O sistema registra operações como:
+
+- INSERT;
+- UPDATE;
+- DELETE.
+
+Incluindo:
+
+- Usuário;
+- Máquina;
+- Endereço IP;
+- Data/Hora;
+- Origem da operação.
+
+---
+
+###  Monitoramento de Requisições
+
+Registro de:
+
+- Método HTTP;
+- Endpoint;
+- Status HTTP;
+- Tempo de resposta;
+- Resultado da operação.
+
+---
+
+###  Sincronização com Firebase
+
+O sistema realiza sincronização de dados entre:
+
+- Banco local;
+- Firebase Firestore.
+
+---
+
+###  Estatísticas Operacionais
+
+A aplicação gera estatísticas sobre:
+
+- Total de registros;
+- Total de alterações;
+- Quantidade de requisições;
+- Última sincronização;
+- CEPs cadastrados;
+- Bairros cadastrados.
+
+---
+
+###  LogService
+
+Serviço principal responsável pelo gerenciamento dos logs locais.
+
+# Tipos de Log
+
+| Tipo | Descrição |
+|---|---|
+| INFO | Informações gerais |
+| SUCCESS | Operações bem-sucedidas |
+| WARNING | Alertas |
+| ERROR | Erros |
+| INSERT | Inserções |
+| UPDATE | Atualizações |
+| DELETE | Exclusões |
+| REQUEST | Requisições HTTP |
+| SYNC | Sincronizações |
+
+---
+
+## AuditoriaService
+
+Responsável pelo controle e armazenamento das auditorias.
+
+Permite registrar:
+
+- Inserções;
+- Atualizações;
+- Exclusões;
+- Histórico de alterações.
+
+---
+
+## FirestoreService
+
+Responsável pela integração com o Firebase Firestore.
+
+Funções:
+
+- Verificar conexão;
+- Buscar dados;
+- Converter documentos;
+- Obter estatísticas.
+
+---
+
+## LocalizacaoViewModel
+
+Camada intermediária entre:
+
+- Interface Console;
+- Serviços da aplicação.
+
+Responsável por:
+
+- Consultas;
+- Sincronizações;
+- Estatísticas;
+- Eventos operacionais.
+
+---
+
+### Informações de Auditoria
+
+O sistema pode registrar informações como:
+
+```json
+{
+  "usuario": "admin",
+  "perfilUsuario": "Administrador",
+  "maquina": "DESKTOP-01",
+  "ipAddress": "127.0.0.1",
+  "acao": "UPDATE"
+}
+```
+
+---
+
+#  Tratamento de Exceções
+
+A aplicação realiza tratamento para:
+
+- Falhas de conexão;
+- Erros de sincronização;
+- Problemas de autenticação;
+- Exceções internas;
+- Falhas de persistência;
+- Arquivos inexistentes.
+
+---
+
+#  Tecnologias Utilizadas
+
+| Tecnologia | Finalidade |
+|---|---|
+| C# | Linguagem principal |
+| .NET 8 | Plataforma da aplicação |
+| Entity Framework Core | Persistência local |
+| Firebase Firestore | Integração em nuvem |
+| MVVM | Organização arquitetural |
+| LINQ | Consultas |
+| JSON | Manipulação de dados |
+
+---
+
+# Configuração do Firebase
+
+No arquivo:
+
+```json
+appsettings.json
+```
+
+Configure:
+
+```json
+{
+  "Firebase": {
+    "ProjectId": "seu-projeto",
+    "KeyFilePath": "firebase-key.json"
+  }
+}
+```
+
+---
+
+#  Execução da Aplicação
+
+```bash
+dotnet run --project ConsoleLog
+```
+
+---
+
+# Benefícios do Sistema
+
+- Registro local de logs;
+- Auditoria operacional;
+- Monitoramento em tempo real;
+- Rastreamento de alterações;
+- Controle de sincronizações;
+- Facilidade de manutenção;
+- Apoio à depuração da aplicação.
+
+---
+
+#  Integração com WebApiMapas
+
+O ConsoleLog atua como sistema complementar da API principal.
+
+| Projeto | Responsabilidade |
+|---|---|
+| WebApiMapas | API REST e persistência |
+| ConsoleLog | Logs locais e auditoria |
+
+---
+
+#  Resultados Esperados
+
+- Logs armazenados localmente;
+- Monitoramento operacional;
+- Auditoria detalhada;
+- Controle de alterações;
+- Histórico de operações;
+- Maior rastreabilidade;
+- Suporte à manutenção e análise de falhas.
+
+---
+
+#  Desenvolvido por
+
+## Squad 2 — API de Persistência (Backend)
+
+Projeto acadêmico voltado para:
+
+- Monitoramento de sistemas;
+- Logs operacionais;
+- Auditoria de aplicações;
+- Integração com Firebase;
+- Persistência geográfica.
+
+
+
