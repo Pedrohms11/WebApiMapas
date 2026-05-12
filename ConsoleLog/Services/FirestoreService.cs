@@ -9,12 +9,22 @@ using System.Threading.Tasks;
 
 namespace ConsoleLog.Services
 {
+    /// <summary>
+    /// Serviço para integração com o Firebase Firestore, responsável por operações CRUD de localizações
+    /// </summary>
     public class FirestoreService
     {
         private readonly FirestoreDb _db;
         private readonly LogService _logger;
         private readonly string _colecaoName = "localizacoes";
 
+        /// <summary>
+        /// Inicializa uma nova instância do serviço Firestore
+        /// </summary>
+        /// <param name="configuration">Configurações do sistema contendo credenciais do Firebase</param>
+        /// <param name="logger">Serviço de logging do sistema</param>
+        /// <exception cref="Exception">Lançada quando o ProjectId não está configurado</exception>
+        /// <exception cref="FileNotFoundException">Lançada quando o arquivo de credenciais não é encontrado</exception>
         public FirestoreService(IConfiguration configuration, LogService logger)
         {
             _logger = logger;
@@ -50,8 +60,16 @@ namespace ConsoleLog.Services
             }
         }
 
+        /// <summary>
+        /// Obtém a instância do FirestoreDb
+        /// </summary>
+        /// <returns>Instância configurada do FirestoreDb</returns>
         public FirestoreDb GetDb() => _db;
 
+        /// <summary>
+        /// Verifica se a conexão com o Firestore está ativa
+        /// </summary>
+        /// <returns>True se a conexão estiver OK, False caso contrário</returns>
         public async Task<bool> VerificarConexao()
         {
             try
@@ -67,6 +85,10 @@ namespace ConsoleLog.Services
             }
         }
 
+        /// <summary>
+        /// Busca todas as localizações armazenadas no Firestore
+        /// </summary>
+        /// <returns>Lista de objetos Localizacao ordenados por Timestamp decrescente</returns>
         public async Task<List<Localizacao>> BuscarTodasLocalizacoes()
         {
             try
@@ -89,6 +111,10 @@ namespace ConsoleLog.Services
             }
         }
 
+        /// <summary>
+        /// Obtém estatísticas consolidadas das localizações no Firestore
+        /// </summary>
+        /// <returns>Objeto com estatísticas como total de registros, última atualização, bairros e CEPs únicos</returns>
         public async Task<FirestoreStats> ObterEstatisticas()
         {
             var todas = await BuscarTodasLocalizacoes();
@@ -101,6 +127,11 @@ namespace ConsoleLog.Services
             };
         }
 
+        /// <summary>
+        /// Converte um documento do Firestore para o objeto Localizacao
+        /// </summary>
+        /// <param name="doc">Snapshot do documento Firestore</param>
+        /// <returns>Objeto Localizacao populado ou null se o documento não existir</returns>
         private Localizacao? ConverterDocumentoParaLocalizacao(DocumentSnapshot doc)
         {
             if (!doc.Exists) return null;
@@ -120,11 +151,21 @@ namespace ConsoleLog.Services
         }
     }
 
+    /// <summary>
+    /// Representa estatísticas do Firestore para localizações
+    /// </summary>
     public class FirestoreStats
     {
+        /// <summary>Total de registros de localização no Firestore</summary>
         public int TotalRegistros { get; set; }
+
+        /// <summary>Data e hora da última atualização registrada</summary>
         public DateTime UltimaAtualizacao { get; set; }
+
+        /// <summary>Número de bairros distintos presentes nos registros</summary>
         public int BairrosUnicos { get; set; }
+
+        /// <summary>Número de CEPs distintos presentes nos registros</summary>
         public int CepsUnicos { get; set; }
     }
 }
