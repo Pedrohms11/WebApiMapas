@@ -68,41 +68,27 @@ namespace ConsoleLog.Views
             var list = await _viewModel.ObterTodasLocalizacoes();
             Console.Clear();
             Console.WriteLine($"\n📌 Total: {list.Count}\n");
-<<<<<<< HEAD
-=======
-
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
             foreach (var l in list)
                 Console.WriteLine($"ID: {l.Id} | {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp:dd/MM/yyyy HH:mm}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Busca e exibe uma localização específica pelo seu identificador único
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task BuscarId()
         {
             Console.Write("ID: ");
             var id = Console.ReadLine();
             var l = await _viewModel.BuscarLocalizacaoPorId(id ?? "");
-<<<<<<< HEAD
-=======
-
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
             if (l != null)
                 Console.WriteLine($"📍 {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp}");
             else
                 Console.WriteLine("Não encontrado");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Busca localizações por CEP e exibe a quantidade encontrada
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task BuscarCep()
         {
             Console.Write("CEP: ");
@@ -110,12 +96,9 @@ namespace ConsoleLog.Views
             Console.WriteLine($"Encontrados: {list.Count}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Busca localizações por bairro (busca parcial) e exibe a quantidade encontrada
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task BuscarBairro()
         {
             Console.Write("Bairro: ");
@@ -123,12 +106,9 @@ namespace ConsoleLog.Views
             Console.WriteLine($"Encontrados: {list.Count}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Busca localizações dentro de um período de datas específico
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task BuscarPeriodo()
         {
             Console.Write("Início (yyyy-mm-dd): ");
@@ -139,54 +119,38 @@ namespace ConsoleLog.Views
             Console.WriteLine($"Encontrados: {list.Count}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Executa a sincronização de dados entre Firestore e banco local
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task Sincronizar()
         {
             var r = await _viewModel.SincronizarDados();
             _logger.LogSync(r.Mensagem, r.Sucesso);
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Exibe estatísticas consolidadas dos dados locais
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task Estatisticas()
         {
             var s = await _viewModel.ObterEstatisticasLocais();
             Console.WriteLine($"Total: {s.TotalRegistros} | Última sync: {s.UltimaSincronizacao}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Exibe o histórico de alterações (auditoria) das últimas 20 operações
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task Historico()
         {
             var h = await _viewModel.ObterTodasAlteracoes();
             Console.WriteLine($"📋 Total alterações: {h.Count}");
-<<<<<<< HEAD
-=======
-
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
             foreach (var a in h.Take(20))
                 Console.WriteLine($"[{a.DataHora:dd/MM HH:mm}] {a.Acao} - {a.Tabela} ID:{a.RegistroId} - {a.Usuario}");
         }
 
-<<<<<<< HEAD
         /// <summary>
         /// Exibe os logs de requisição das últimas 20 requisições
         /// </summary>
-=======
->>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
         private async Task LogsRequisicao()
         {
             var l = await _viewModel.ObterTodosLogsRequisicao();
