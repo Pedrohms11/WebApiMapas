@@ -48,6 +48,7 @@ namespace ConsoleLog.ViewModels
             _requisicaoLogger = requisicaoLogger;
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Obtém todas as localizações do banco de dados local ordenadas por Timestamp decrescente
         /// </summary>
@@ -82,6 +83,18 @@ namespace ConsoleLog.ViewModels
         /// <param name="fim">Data e hora final do período</param>
         /// <returns>Lista de localizações registradas no período</returns>
         public async Task<List<Localizacao>> BuscarLocalizacoesPorPeriodo(DateTime inicio, DateTime fim) => await _context.Localizacoes.Where(l => l.Timestamp >= inicio && l.Timestamp <= fim).OrderByDescending(l => l.Timestamp).ToListAsync();
+=======
+        public async Task<List<Localizacao>> ObterTodasLocalizacoes()
+            => await _context.Localizacoes.OrderByDescending(l => l.Timestamp).ToListAsync();
+        public async Task<Localizacao?> BuscarLocalizacaoPorId(string id)
+            => await _context.Localizacoes.FindAsync(id);
+        public async Task<List<Localizacao>> BuscarLocalizacoesPorCep(string cep)
+            => await _context.Localizacoes.Where(l => l.Cep == cep).OrderByDescending(l => l.Timestamp).ToListAsync();
+        public async Task<List<Localizacao>> BuscarLocalizacoesPorBairro(string bairro)
+            => await _context.Localizacoes.Where(l => l.Bairro.Contains(bairro)).OrderByDescending(l => l.Timestamp).ToListAsync();
+        public async Task<List<Localizacao>> BuscarLocalizacoesPorPeriodo(DateTime inicio, DateTime fim)
+            => await _context.Localizacoes.Where(l => l.Timestamp >= inicio && l.Timestamp <= fim).OrderByDescending(l => l.Timestamp).ToListAsync();
+>>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
 
         /// <summary>
         /// Inicia o processo de sincronização de dados do Firestore para o banco local
@@ -125,6 +138,7 @@ namespace ConsoleLog.ViewModels
             };
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// Obtém estatísticas dos dados armazenados no Firestore
         /// </summary>
@@ -182,6 +196,34 @@ namespace ConsoleLog.ViewModels
         /// <param name="ids">HashSet com IDs já carregados para exclusão</param>
         /// <returns>Lista de logs de requisição não visualizados anteriormente</returns>
         public async Task<List<LogRequisicao>> ObterLogsRequisicaoRecentes(HashSet<int> ids) => (await _requisicaoLogger.ObterTodosLogs()).Where(l => !ids.Contains(l.Id)).ToList();
+=======
+        public async Task<FirestoreStats> ObterEstatisticasFirestore()
+            => await _firestoreService.ObterEstatisticas();
+
+        public async Task<List<Auditoria>> ObterTodasAlteracoes()
+            => await _auditoriaService.ObterTodasAlteracoes();
+
+        public async Task<List<Auditoria>> BuscarAlteracoesPorUsuario(string usuario)
+            => await _auditoriaService.BuscarAlteracoesPorUsuario(usuario);
+
+        public async Task<AuditoriaStats> ObterEstatisticasAuditoria()
+            => await _auditoriaService.ObterEstatisticas();
+
+        public async Task<List<LogRequisicao>> ObterTodosLogsRequisicao()
+            => await _requisicaoLogger.ObterTodosLogs();
+
+        public async Task<List<LogRequisicao>> ObterLogsPorOperacao(string op)
+            => await _requisicaoLogger.ObterLogsPorOperacao(op);
+
+        public async Task<List<LogRequisicao>> ObterLogsPorCategoria(string cat)
+            => await _requisicaoLogger.ObterLogsPorCategoria(cat);
+
+        public async Task<RequisicaoStats> ObterEstatisticasRequisicoes()
+            => await _requisicaoLogger.ObterEstatisticas();
+
+        public async Task<List<LogRequisicao>> ObterLogsRequisicaoRecentes(HashSet<int> ids)
+            => (await _requisicaoLogger.ObterTodosLogs()).Where(l => !ids.Contains(l.Id)).ToList();
+>>>>>>> 0803e68c81502ac05182e2b46359eaf802f1d777
     }
 
     /// <summary>
