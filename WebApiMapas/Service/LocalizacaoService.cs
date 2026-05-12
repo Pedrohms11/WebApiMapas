@@ -26,7 +26,7 @@ namespace WebApiMapas.Service
         public LocalizacaoService(ILogger<LocalizacaoService> logger, FirestoreService firestoreService)
         {
             _logger = logger;
-            _firestoreDb = firestoreService.Db; // Aqui está a mágica que resolve o erro de autenticação!
+            _firestoreDb = firestoreService.Db; // Acessa a instância do FirestoreDb fornecida pelo serviço de configuração
         }
 
         /// <summary>
@@ -35,22 +35,22 @@ namespace WebApiMapas.Service
         /// <returns></returns>
         public async Task<List<Localizacao>> Listar()
         {
-            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName);
-            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync();
+            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName); // Referência para a coleção "localizacoes" no Firebase
+            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync(); // Executa a consulta para obter todos os documentos da coleção
 
-            List<Localizacao> lista = new List<Localizacao>();
+            List<Localizacao> lista = new List<Localizacao>(); // Iniciando uma lista para armazenar as localizações convertidas
 
-            foreach (DocumentSnapshot document in snapshot.Documents)
+            foreach (DocumentSnapshot document in snapshot.Documents) // Percorre cada item retornado pela consulta
             {
-                if (document.Exists)
+                if (document.Exists) // Verifica se o documento existe antes de tentar convertê-lo
                 {
-                    var item = document.ConvertTo<Localizacao>();
-                    item.Id = document.Id; // Garante que a ID do banco preencha a model
-                    lista.Add(item);
+                    var item = document.ConvertTo<Localizacao>(); // Converte o documento do Firebase para a classe Localizacao usando o método de extensão ConvertTo
+                    item.Id = document.Id; // Forçando o ID do documento para ser o ID da localização, garantindo que tenhamos acesso ao identificador único do Firebase
+                    lista.Add(item); // Adiciona a localização convertida à lista de resultados
                 }
             }
 
-            return lista;
+            return lista; // Retorna a lista de localizações obtidas do Firebase
         }
 
         /// <summary>

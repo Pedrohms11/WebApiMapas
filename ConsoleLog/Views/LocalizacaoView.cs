@@ -54,16 +54,74 @@ namespace ConsoleLog.Views
             var list = await _viewModel.ObterTodasLocalizacoes();
             Console.Clear();
             Console.WriteLine($"\n📌 Total: {list.Count}\n");
-            foreach (var l in list) Console.WriteLine($"ID: {l.Id} | {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp:dd/MM/yyyy HH:mm}");
+
+            foreach (var l in list)
+                Console.WriteLine($"ID: {l.Id} | {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp:dd/MM/yyyy HH:mm}");
         }
 
-        private async Task BuscarId() { Console.Write("ID: "); var id = Console.ReadLine(); var l = await _viewModel.BuscarLocalizacaoPorId(id ?? ""); if (l != null) Console.WriteLine($"📍 {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp}"); else Console.WriteLine("Não encontrado"); }
-        private async Task BuscarCep() { Console.Write("CEP: "); var list = await _viewModel.BuscarLocalizacoesPorCep(Console.ReadLine() ?? ""); Console.WriteLine($"Encontrados: {list.Count}"); }
-        private async Task BuscarBairro() { Console.Write("Bairro: "); var list = await _viewModel.BuscarLocalizacoesPorBairro(Console.ReadLine() ?? ""); Console.WriteLine($"Encontrados: {list.Count}"); }
-        private async Task BuscarPeriodo() { Console.Write("Início (yyyy-mm-dd): "); var i = DateTime.Parse(Console.ReadLine() ?? ""); Console.Write("Fim: "); var f = DateTime.Parse(Console.ReadLine() ?? ""); var list = await _viewModel.BuscarLocalizacoesPorPeriodo(i, f); Console.WriteLine($"Encontrados: {list.Count}"); }
-        private async Task Sincronizar() { var r = await _viewModel.SincronizarDados(); _logger.LogSync(r.Mensagem, r.Sucesso); }
-        private async Task Estatisticas() { var s = await _viewModel.ObterEstatisticasLocais(); Console.WriteLine($"Total: {s.TotalRegistros} | Última sync: {s.UltimaSincronizacao}"); }
-        private async Task Historico() { var h = await _viewModel.ObterTodasAlteracoes(); Console.WriteLine($"📋 Total alterações: {h.Count}"); foreach (var a in h.Take(20)) Console.WriteLine($"[{a.DataHora:dd/MM HH:mm}] {a.Acao} - {a.Tabela} ID:{a.RegistroId} - {a.Usuario}"); }
-        private async Task LogsRequisicao() { var l = await _viewModel.ObterTodosLogsRequisicao(); Console.WriteLine($"📜 Total requisições: {l.Count}"); foreach (var log in l.Take(20)) Console.WriteLine($"[{log.DataHora:HH:mm:ss}] {log.Operacao} {log.Endpoint} - {log.DuracaoMs}ms - {(log.Sucesso ? "✅" : "❌")}"); }
+        private async Task BuscarId()
+        {
+            Console.Write("ID: ");
+            var id = Console.ReadLine();
+            var l = await _viewModel.BuscarLocalizacaoPorId(id ?? "");
+
+            if (l != null)
+                Console.WriteLine($"📍 {l.Logradouro}, {l.Numero} - {l.Bairro} | {l.Timestamp}");
+            else
+                Console.WriteLine("Não encontrado");
+        }
+
+        private async Task BuscarCep()
+        {
+            Console.Write("CEP: ");
+            var list = await _viewModel.BuscarLocalizacoesPorCep(Console.ReadLine() ?? "");
+            Console.WriteLine($"Encontrados: {list.Count}");
+        }
+
+        private async Task BuscarBairro()
+        {
+            Console.Write("Bairro: ");
+            var list = await _viewModel.BuscarLocalizacoesPorBairro(Console.ReadLine() ?? "");
+            Console.WriteLine($"Encontrados: {list.Count}");
+        }
+
+        private async Task BuscarPeriodo()
+        {
+            Console.Write("Início (yyyy-mm-dd): ");
+            var i = DateTime.Parse(Console.ReadLine() ?? "");
+            Console.Write("Fim: ");
+            var f = DateTime.Parse(Console.ReadLine() ?? "");
+            var list = await _viewModel.BuscarLocalizacoesPorPeriodo(i, f);
+            Console.WriteLine($"Encontrados: {list.Count}");
+        }
+
+        private async Task Sincronizar()
+        {
+            var r = await _viewModel.SincronizarDados();
+            _logger.LogSync(r.Mensagem, r.Sucesso);
+        }
+
+        private async Task Estatisticas()
+        {
+            var s = await _viewModel.ObterEstatisticasLocais();
+            Console.WriteLine($"Total: {s.TotalRegistros} | Última sync: {s.UltimaSincronizacao}");
+        }
+
+        private async Task Historico()
+        {
+            var h = await _viewModel.ObterTodasAlteracoes();
+            Console.WriteLine($"📋 Total alterações: {h.Count}");
+
+            foreach (var a in h.Take(20))
+                Console.WriteLine($"[{a.DataHora:dd/MM HH:mm}] {a.Acao} - {a.Tabela} ID:{a.RegistroId} - {a.Usuario}");
+        }
+
+        private async Task LogsRequisicao()
+        {
+            var l = await _viewModel.ObterTodosLogsRequisicao();
+            Console.WriteLine($"📜 Total requisições: {l.Count}");
+            foreach (var log in l.Take(20))
+                Console.WriteLine($"[{log.DataHora:HH:mm:ss}] {log.Operacao} {log.Endpoint} - {log.DuracaoMs}ms - {(log.Sucesso ? "✅" : "❌")}");
+        }
     }
 }
