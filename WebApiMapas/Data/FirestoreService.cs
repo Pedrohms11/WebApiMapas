@@ -34,7 +34,7 @@ namespace WebApiMapas.Data
             var builder = new FirestoreDbBuilder
             {
                 ProjectId = projectId,
-                CredentialsPath = fullPath // Força o Google a usar este arquivo exato
+                CredentialsPath = fullPath 
             };
 
             Db = builder.Build();

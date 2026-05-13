@@ -6,7 +6,7 @@ namespace WebApiMapas.Models
     public class Localizacao
     {
         [FirestoreProperty]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         [FirestoreProperty]
         public string Logradouro { get; set; }
         [FirestoreProperty]
@@ -20,6 +20,6 @@ namespace WebApiMapas.Models
         [FirestoreProperty]
         public double Longitude { get; set; }
         [FirestoreProperty]
-        public DateTime Timestamp { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }

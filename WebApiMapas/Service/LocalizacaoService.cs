@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using WebApiMapas.Data;
 using WebApiMapas.Models;
+using System.Net.Http;
+using System.Globalization;
 
 namespace WebApiMapas.Service
 {
@@ -15,49 +17,43 @@ namespace WebApiMapas.Service
     {
         private readonly ILogger<LocalizacaoService> _logger;
         private readonly FirestoreDb _firestoreDb;
-        private readonly string _collectionName = "localizacoes"; // Centralizado para evitar erros de digitação
+        private readonly string _collectionName = "localizacoes";
+        private readonly HttpClient _httpClient;
 
         /// <summary>
-        /// Construtor da classe - Recebe o Logger e o serviço do Firebase 
-        /// via injeção de dependência. Repositório antigo removido!
+        /// Construtor da classe com Injeção de Dependência.
+        /// Resolvido conflito de IHttpClientFactory especificando o namespace System.Net.Http.
         /// </summary>
-        /// <param name="logger"></param>
-        /// <param name="firestoreService"></param>
-        public LocalizacaoService(ILogger<LocalizacaoService> logger, FirestoreService firestoreService)
+        public LocalizacaoService(
+            ILogger<LocalizacaoService> logger,
+            FirestoreService firestoreService,
+            System.Net.Http.IHttpClientFactory httpClientFactory) // Correção do erro CS0104 aqui
         {
             _logger = logger;
-            _firestoreDb = firestoreService.Db; // Acessa a instância do FirestoreDb fornecida pelo serviço de configuração
+            _firestoreDb = firestoreService.Db;
+            _httpClient = httpClientFactory.CreateClient();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "WebApiMapas-Squad2");
         }
 
-        /// <summary>
-        /// Listar todas as localizações buscando direto no Firebase.
-        /// </summary>
-        /// <returns></returns>
         public async Task<List<Localizacao>> Listar()
         {
-            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName); // Referência para a coleção "localizacoes" no Firebase
-            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync(); // Executa a consulta para obter todos os documentos da coleção
+            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName);
+            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync();
 
-            List<Localizacao> lista = new List<Localizacao>(); // Iniciando uma lista para armazenar as localizações convertidas
+            List<Localizacao> lista = new List<Localizacao>();
 
-            foreach (DocumentSnapshot document in snapshot.Documents) // Percorre cada item retornado pela consulta
+            foreach (DocumentSnapshot document in snapshot.Documents)
             {
-                if (document.Exists) // Verifica se o documento existe antes de tentar convertê-lo
+                if (document.Exists)
                 {
-                    var item = document.ConvertTo<Localizacao>(); // Converte o documento do Firebase para a classe Localizacao usando o método de extensão ConvertTo
-                    item.Id = document.Id; // Forçando o ID do documento para ser o ID da localização, garantindo que tenhamos acesso ao identificador único do Firebase
-                    lista.Add(item); // Adiciona a localização convertida à lista de resultados
+                    var item = document.ConvertTo<Localizacao>();
+                    item.Id = document.Id;
+                    lista.Add(item);
                 }
             }
-
-            return lista; // Retorna a lista de localizações obtidas do Firebase
+            return lista;
         }
 
-        /// <summary>
-        /// Listar uma localização por ID buscando direto no Firebase
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
         public async Task<Localizacao?> ObterPorId(string id)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
@@ -69,18 +65,14 @@ namespace WebApiMapas.Service
                 localizacao.Id = snapshot.Id;
                 return localizacao;
             }
-
             return null;
         }
 
-        /// <summary>
-        /// Listar uma localização por logradouro buscando direto no Firebase
-        /// </summary>
-        /// <param name="logradouro"></param>
-        /// <returns></returns>
         public async Task<Localizacao?> ObterPorLogradouro(string logradouro)
         {
-            Query query = _firestoreDb.Collection(_collectionName);
+            // Nota: No Firestore, buscas por texto exato funcionam assim, 
+            // mas para buscas parciais seria necessário um serviço como Algolia.
+            Query query = _firestoreDb.Collection(_collectionName).WhereEqualTo("Logradouro", logradouro);
             QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
             if (snapshot.Documents.Count > 0)
@@ -90,88 +82,120 @@ namespace WebApiMapas.Service
                 localizacao.Id = document.Id;
                 return localizacao;
             }
-
             return null;
         }
 
-        /// <summary>
-        /// Criar uma nova localização persistindo direto no Firebase (Com Auto-Incremento)
-        /// </summary>
-        /// <param name="localizacao"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
         public async Task<Localizacao> Criar(Localizacao localizacao)
         {
-            // Validações
+            // Validações de limites
             if (localizacao.Latitude < -90 || localizacao.Latitude > 90)
                 throw new ArgumentException("A latitude deve estar entre -90 e 90 graus.");
 
             if (localizacao.Longitude < -180 || localizacao.Longitude > 180)
                 throw new ArgumentException("A longitude deve estar entre -180 e 180 graus.");
 
-            // 1. Referência para o documento que guarda o contador
-            DocumentReference contadorRef = _firestoreDb.Collection("configuracoes").Document("contador_localizacoes");
-
-            // 2. Executa a transação para gerar um ID sequencial seguro
-            int novoIdNumerico = await _firestoreDb.RunTransactionAsync(async transaction =>
+            // Validação Geográfica via OpenStreetMap
+            bool coordenadaExiste = await 
+                ValidarCoordenadasNoMundoReal(localizacao.Latitude, localizacao.Longitude);
+            if (!coordenadaExiste)
             {
-                DocumentSnapshot snapshot = await transaction.GetSnapshotAsync(contadorRef);
+                _logger.LogWarning($"Tentativa de cadastro de coordenada inexistente:" +
+                    $" {localizacao.Latitude}, {localizacao.Longitude}");
+                throw new
+                    ArgumentException("As coordenadas fornecidas não correspondem a um local " +
+                    "válido no globo terrestre.");
+            }
+
+            // Gerar ID Sequencial via Transação no Firebase
+            DocumentReference contadorRef = 
+                _firestoreDb.Collection("configuracoes").Document("contador_localizacoes");
+
+            int novoIdNumerico = await
+                _firestoreDb.RunTransactionAsync(async transaction =>
+            {
+                DocumentSnapshot snapshot = await
+                transaction.GetSnapshotAsync(contadorRef);
+
                 int idAtual = 0;
 
                 if (snapshot.Exists)
                 {
-                    // Usa TryGetValue para evitar erros caso o campo "ultimoId" não exista ainda
                     snapshot.TryGetValue("ultimoId", out idAtual);
                 }
 
                 int proximoId = idAtual + 1;
 
-                // Atualiza o documento do contador com o novo valor
                 Dictionary<string, object> atualizacaoContador = new Dictionary<string, object>
                 {
                     { "ultimoId", proximoId }
                 };
 
                 transaction.Set(contadorRef, atualizacaoContador, SetOptions.MergeAll);
-
                 return proximoId;
             });
 
-            // 3. Converte o número para string e define a referência
+            // Persistência com o ID tratado
             string idString = novoIdNumerico.ToString();
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(idString);
 
-            // 4. Salva a localização com o ID numérico forçado
             localizacao.Id = idString;
             await docRef.SetAsync(localizacao);
 
             return localizacao;
         }
 
-        /// <summary>
-        /// Atualiza uma localização existente no Firebase. 
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="existente"></param>
-        /// <returns></returns>
         public async Task Atualizar(string id, Localizacao existente)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
-
-            // Troquei de Overwrite para MergeAll para ser mais seguro. 
-            // Assim, se houver campos no Firebase que não estão na sua classe, eles não serão apagados.
             await docRef.SetAsync(existente, SetOptions.MergeAll);
         }
 
-        /// <summary>
-        /// Deletar um documento pelo ID no Firebase
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
         public async Task Delete(string id)
         {
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
             await docRef.DeleteAsync();
+        }
+
+        /// <summary>
+        /// Este método atua como validador da coordenadas no mapa mundial se as 
+        /// coordenadas enviadas realmente existem ou se são apenas números aleatórios.
+        /// </summary>
+        private async Task<bool> ValidarCoordenadasNoMundoReal(double latitude, double longitude)
+        {
+            try
+            {                
+                // Conversão para o padrão internacional para evitar que a API se perca.
+                var latitudeTexto = latitude.ToString(CultureInfo.InvariantCulture);
+                var longitudeTexto = longitude.ToString(CultureInfo.InvariantCulture);
+                
+                // Aguarda um "JSON" de volta para que o sistema consiga ler a resposta.
+                var urlDaConsulta = 
+                    $"https://nominatim.openstreetmap.org/reverse?format=json&lat=" +
+                    $"{latitudeTexto}&lon={longitudeTexto}";
+
+                // Ligação para o servidor e aguarda o retorno.
+                var respostaDaInternet = await _httpClient.GetAsync(urlDaConsulta);
+
+                if (!respostaDaInternet.IsSuccessStatusCode)
+                    return false; // Se o site estiver fora do ar, tratamos como inválido por agora.
+
+                // Lê o que o mapa respondeu.
+                var corpoDaResposta = await 
+                    respostaDaInternet.Content.ReadAsStringAsync();
+
+                // OpenStreetMap: Se ele não conhece o lugar (ex: meio do mar),
+                // ele nos envia uma mensagem contendo a palavra "error".                 
+                bool enderecoEncontrado = !corpoDaResposta.Contains("\"error\"");
+
+                return enderecoEncontrado;
+            }
+            catch (Exception erro)
+            {
+                // Se a internet cair, o usuário não pode ficar travado.
+                _logger.LogError(
+                    $"Não conseguimos validar o local agora. Motivo: {erro.Message}");
+                return true;
+            }
         }
     }
 }

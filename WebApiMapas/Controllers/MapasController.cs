@@ -140,86 +140,49 @@ namespace WebApiMapas.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SalvarLocalizacao([FromBody] Localizacao novaLocalizacao)
         {
+            // Validação de nulidade
             if (novaLocalizacao == null)
-                return BadRequest(new
-                {
-                    erro = "Requisição inválida",
+                return BadRequest(new 
+                { erro = "Requisição inválida", 
                     detalhe = "O corpo do JSON não pode estar vazio."
                 });
 
-
+            // Verificação de campos obrigatórios
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Logradouro))
                 return BadRequest(new
-                {
-                    erro = "Campo obrigatório",
-                    detalhe = "O logradouro deve ser preenchido."
+                { erro = "Campo obrigatório", 
+                    detalhe = "O logradouro deve ser preenchido." 
                 });
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Numero))
-            {
                 novaLocalizacao.Numero = "S/N";
-            }
-
-            if (string.IsNullOrWhiteSpace(novaLocalizacao.Bairro))
-                return BadRequest(new
-                {
-                    erro = "Campo obrigatório",
-                    detalhe = "O bairro deve ser preenchido."
-                });
 
             if (string.IsNullOrWhiteSpace(novaLocalizacao.Cep))
-                return BadRequest(new
-                {
-                    erro = "Campo obrigatório",
-                    detalhe = "O CEP deve ser preenchido."
+                return BadRequest(new 
+                { erro = "Campo obrigatório",
+                    detalhe = "O CEP deve ser preenchido." 
                 });
-
-            // Validação básica de formato (Ex: 34000-000 ou 34000000)
-            if (novaLocalizacao.Cep.Length < 8)
-                return BadRequest(new
-                {
-                    erro = "CEP inválido",
-                    detalhe = "O CEP deve conter pelo menos 8 caracteres."
-                });
-
-            // Validação geográfica: A latitude deve estar entre -90 (Polo Sul) e 90 (Polo Norte)         
-            if (novaLocalizacao.Latitude < -90 || novaLocalizacao.Latitude > 90)
-            {
-                return BadRequest(new
-                {
-                    erro = "Coordenada inválida",
-                    detalhe = "A latitude deve estar entre -90 e 90 graus."
-                });
-            }
-
-            // Validação geográfica: A longitude deve estar entre -180 (Oeste) e 180 (Leste).
-            if (novaLocalizacao.Longitude < -180 || novaLocalizacao.Longitude > 180)
-            {
-                return BadRequest(new
-                {
-                    erro = "Coordenada inválida",
-                    detalhe = "A longitude deve estar entre -180 e 180 graus."
-                });
-            }
 
             try
             {
-                // Deixa o Service processar a gravação no Firebase
+                // O Service faz TODA a validação geográfica e mapa real
                 var resultado = await _service.Criar(novaLocalizacao);
+
                 return Created("", new
                 {
                     mensagem = $"Localização salva com sucesso! ID: {resultado.Id}",
                     dados = resultado
                 });
             }
-
+            // AQUI ESTÁ A MUDANÇA PRINCIPAL:
+            catch (ArgumentException ex)
+            {
+                // Captura o erro do OpenStreetMap ou das coordenadas inválidas
+                return BadRequest(new { erro = "Validação Geográfica", detalhe = ex.Message });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    erro = "Erro no servidor",
-                    detalhe = ex.Message
-                });
+                return StatusCode(500, new { erro = "Erro no servidor", detalhe = ex.Message });
             }
         }
 
@@ -253,7 +216,7 @@ namespace WebApiMapas.Controllers
                 if (existente == null)
                     return NotFound(new { mensagem = $"ID {id} não encontrado." });
 
-                // Atualiza os campos necessários
+               // Atualiza os campos necessários
                 existente.Logradouro = atualizadaLocalizacao.Logradouro ?? existente.Logradouro;
                 existente.Numero = atualizadaLocalizacao.Numero ?? existente.Numero;
                 existente.Bairro = atualizadaLocalizacao.Bairro ?? existente.Bairro;
