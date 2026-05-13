@@ -41,9 +41,9 @@ namespace WebApiMapas.Controllers
                 var localizacoes = await _service.Listar();
                 return Ok(new { mensagem = "Lista obtida com sucesso.", localizacoes });
             }
-            catch (Exception ex)
+            catch
             {
-                return StatusCode(500, new { mensagem = $"Erro ao listar localizações: {ex.Message}" });
+                return StatusCode(500, new { mensagem = $"Erro ao listar localizações" });
             }
         }
 
@@ -79,9 +79,9 @@ namespace WebApiMapas.Controllers
 
                 return Ok(new { mensagem = "Localização encontrada: ", localizacao });
             }
-            catch (Exception ex)
+            catch
             {
-                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por ID: {ex.Message}" });
+                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por ID" });
             }
         }
 
@@ -117,9 +117,9 @@ namespace WebApiMapas.Controllers
 
                 return Ok(new { mensagem = "Logradouro encontrado: ", localizacao });
             }
-            catch (Exception ex)
+            catch
             {
-                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por logradouro: {ex.Message}" });
+                return StatusCode(500, new { mensagem = $"Erro ao buscar localização por logradouro" });
             }
         }
 
