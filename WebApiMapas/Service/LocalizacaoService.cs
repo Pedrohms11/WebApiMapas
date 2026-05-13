@@ -37,26 +37,30 @@ namespace WebApiMapas.Service
 
         public async Task<List<Localizacao>> Listar()
         {
-            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName);
-            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync();
+            CollectionReference collectionRef = _firestoreDb.Collection(_collectionName); // Referência para a coleção "localizacoes" no Firebase
+            QuerySnapshot snapshot = await collectionRef.GetSnapshotAsync(); // Executa a consulta para obter todos os documentos da coleção
 
-            List<Localizacao> lista = new List<Localizacao>();
+            List<Localizacao> lista = new List<Localizacao>(); // Iniciando uma lista para armazenar as localizações convertidas
 
-            foreach (DocumentSnapshot document in snapshot.Documents)
+            foreach (DocumentSnapshot document in snapshot.Documents) // Percorre cada item retornado pela consulta
             {
-                if (document.Exists)
+                if (document.Exists) // Verifica se o documento existe antes de tentar convertê-lo
                 {
-                    var item = document.ConvertTo<Localizacao>();
-                    item.Id = document.Id;
-                    lista.Add(item);
+                    var item = document.ConvertTo<Localizacao>(); // Converte o documento do Firebase para a classe Localizacao usando o método de extensão ConvertTo
+                    item.Id = document.Id; // Forçando o ID do documento para ser o ID da localização, garantindo que tenhamos acesso ao identificador único do Firebase
+                    lista.Add(item); // Adiciona a localização convertida à lista de resultados
                 }
             }
-            return lista;
+
+            return lista; // Retorna a lista de localizações obtidas do Firebase
         }
 
         public async Task<Localizacao?> ObterPorId(string id)
         {
+            // Referência para o documento específico com o ID fornecido
             DocumentReference docRef = _firestoreDb.Collection(_collectionName).Document(id);
+
+            // Executa a consulta para obter o documento do Firebase
             DocumentSnapshot snapshot = await docRef.GetSnapshotAsync();
 
             if (snapshot.Exists)
@@ -65,21 +69,35 @@ namespace WebApiMapas.Service
                 localizacao.Id = snapshot.Id;
                 return localizacao;
             }
+
             return null;
         }
 
+        /// <summary>
+        /// Listar uma localização por logradouro buscando direto no Firebase
+        /// </summary>
+        /// <param name="logradouro"></param>
+        /// <returns></returns>
         public async Task<Localizacao?> ObterPorLogradouro(string logradouro)
         {
-            // Nota: No Firestore, buscas por texto exato funcionam assim, 
-            // mas para buscas parciais seria necessário um serviço como Algolia.
-            Query query = _firestoreDb.Collection(_collectionName).WhereEqualTo("Logradouro", logradouro);
+            Query query = _firestoreDb.Collection(_collectionName);
+
+            // Obtém todos os documentos da coleção
             QuerySnapshot snapshot = await query.GetSnapshotAsync();
 
+            // Verifica se há documentos retornados pela consulta
             if (snapshot.Documents.Count > 0)
             {
+                // Converte o primeiro documento encontrado para a classe Localizacao
                 var document = snapshot.Documents[0];
+
+                // Convertendo o documento para a classe Localizacao usando o método de extensão ConvertTo
                 var localizacao = document.ConvertTo<Localizacao>();
+
+                // Forçando o ID do documento para ser o ID da localização, garantindo
+                // que tenhamos acesso ao identificador único do Firebase
                 localizacao.Id = document.Id;
+
                 return localizacao;
             }
             return null;
