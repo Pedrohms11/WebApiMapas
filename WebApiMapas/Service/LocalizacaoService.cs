@@ -112,7 +112,7 @@ namespace WebApiMapas.Service
             if (localizacao.Longitude < -180 || localizacao.Longitude > 180)
                 throw new ArgumentException("A longitude deve estar entre -180 e 180 graus.");
 
-            // Validação Geográfica via OpenStreetMap
+            // Validação de existência da coordenada via OpenStreetMap
             bool coordenadaExiste = await 
                 ValidarCoordenadasNoMundoReal(localizacao.Latitude, localizacao.Longitude);
             if (!coordenadaExiste)
@@ -182,34 +182,39 @@ namespace WebApiMapas.Service
         {
             try
             {                
-                // Conversão para o padrão internacional para evitar que a API se perca.
+                // Conversão para o padrão internacional mudança de , para .
                 var latitudeTexto = latitude.ToString(CultureInfo.InvariantCulture);
                 var longitudeTexto = longitude.ToString(CultureInfo.InvariantCulture);
-                
-                // Aguarda um "JSON" de volta para que o sistema consiga ler a resposta.
+
+                // Construção da URL de consulta para o serviço Nominatim do OpenStreetMap,
+                // que é um serviço de geocodificação reversa.
                 var urlDaConsulta = 
                     $"https://nominatim.openstreetmap.org/reverse?format=json&lat=" +
                     $"{latitudeTexto}&lon={longitudeTexto}";
 
-                // Ligação para o servidor e aguarda o retorno.
+                // Envio da requisição HTTP para o serviço de geocodificação reversa.
                 var respostaDaInternet = await _httpClient.GetAsync(urlDaConsulta);
 
+                // Verificação de resposta diferente de sucesso (ex: 404, 500)
                 if (!respostaDaInternet.IsSuccessStatusCode)
-                    return false; // Se o site estiver fora do ar, tratamos como inválido por agora.
+                    return false;
 
-                // Lê o que o mapa respondeu.
+                // Leitura do conteúdo da resposta convertido em string
                 var corpoDaResposta = await 
                     respostaDaInternet.Content.ReadAsStringAsync();
 
-                // OpenStreetMap: Se ele não conhece o lugar (ex: meio do mar),
-                // ele nos envia uma mensagem contendo a palavra "error".                 
+                // OpenStreetMap: responde "com sucesso" (HTTP 200), mesmo quando não encontra o lugar,
+                // mas escreve a palavra "error", portanto caso a resposta não contenha a palavra "error",
+                // ele retorna o endereço encontrado, caso contrário,
+                // retorna falso indicando que as coordenadas não correspondem a um local válido.             
                 bool enderecoEncontrado = !corpoDaResposta.Contains("\"error\"");
 
                 return enderecoEncontrado;
             }
             catch (Exception erro)
             {
-                // Se a internet cair, o usuário não pode ficar travado.
+                // Plano B: Se a validação falhar por algum motivo (ex: sem internet),
+                //  permite o cadastro, mas registra o erro para análise futura.
                 _logger.LogError(
                     $"Não conseguimos validar o local agora. Motivo: {erro.Message}");
                 return true;

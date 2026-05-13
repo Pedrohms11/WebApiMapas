@@ -174,15 +174,21 @@ namespace WebApiMapas.Controllers
                     dados = resultado
                 });
             }
-            // AQUI ESTÁ A MUDANÇA PRINCIPAL:
+            // Mensagem enviada quando o OpenStreetMap
+            // não encontrar as coordenadas ou quando as coordenadas são inválidas
             catch (ArgumentException ex)
-            {
-                // Captura o erro do OpenStreetMap ou das coordenadas inválidas
-                return BadRequest(new { erro = "Validação Geográfica", detalhe = ex.Message });
+            {                
+                return BadRequest(new { 
+                    erro = "Validação Geográfica", 
+                    detalhe = ex.Message
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { erro = "Erro no servidor", detalhe = ex.Message });
+                return StatusCode(500, new { 
+                    erro = "Erro no servidor", 
+                    detalhe = ex.Message 
+                });
             }
         }
 
